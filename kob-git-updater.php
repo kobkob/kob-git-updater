@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Kob Git Updater
  * Description: Install and auto-update plugins & themes from GitHub releases (or branches). Adds a settings page for a GitHub token and managed repos.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Monsenhor Filipo
  * License: GPL-2.0-or-later
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 class GIU_Plugin {
 	const OPTION = 'giu_options';
-	const VERSION = '1.0.0';
+	const VERSION = '1.1.0';
 	private const NOTICE_KEY_PREFIX = 'giu_flash_';
 	private ?array $current_install = null;
 
