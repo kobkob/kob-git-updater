@@ -12,6 +12,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 class GIU_Plugin {
 	const OPTION = 'giu_options';
 	const VERSION = '1.0.0';
+	private const NOTICE_KEY_PREFIX = 'giu_flash_';
+	private ?array $current_install = null;
 
 	public function __construct() {
 		add_action( 'admin_menu', [ $this, 'add_menu' ] );
@@ -19,6 +21,7 @@ class GIU_Plugin {
 		add_action( 'admin_post_giu_add_repo', [ $this, 'handle_add_repo' ] );
 		add_action( 'admin_post_giu_remove_repo', [ $this, 'handle_remove_repo' ] );
 		add_action( 'admin_post_giu_install_repo', [ $this, 'handle_install_repo' ] );
+		add_action( 'admin_notices', [ $this, 'render_flash_notices' ] );
 
 		// Inject update metadata for plugins
 		add_filter( 'pre_set_site_transient_update_plugins', [ $this, 'filter_plugin_updates' ] );
@@ -66,10 +69,96 @@ class GIU_Plugin {
 	}
 
 	public function sanitize_options( $input ) {
-		$opts   = self::get_options();
-		$token  = isset( $input['token'] ) ? trim( (string) $input['token'] ) : '';
-		$opts['token'] = $token;
-		return $opts;
+		$current = self::get_options();
+		$next = [
+			'token' => $current['token'],
+			'repos' => $current['repos'],
+		];
+		if ( isset( $input['token'] ) ) {
+			$next['token'] = trim( (string) $input['token'] );
+		}
+		if ( isset( $input['repos'] ) && is_array( $input['repos'] ) ) {
+			$next['repos'] = $this->sanitize_repos( $input['repos'] );
+		}
+		return $next;
+	}
+
+	private function sanitize_repos( array $repos ) : array {
+		$sanitized = [];
+		foreach ( $repos as $id => $repo ) {
+			if ( ! is_array( $repo ) ) continue;
+			$key = sanitize_title( (string) $id );
+			if ( $key === '' ) continue;
+			$type = isset( $repo['type'] ) && $repo['type'] === 'theme' ? 'theme' : 'plugin';
+			$owner = isset( $repo['owner'] ) ? sanitize_text_field( (string) $repo['owner'] ) : '';
+			$name = isset( $repo['repo'] ) ? sanitize_text_field( (string) $repo['repo'] ) : '';
+			$slug = isset( $repo['slug'] ) ? sanitize_text_field( (string) $repo['slug'] ) : '';
+			if ( $owner === '' || $name === '' || $slug === '' ) continue;
+			$latest = isset( $repo['latest'] ) ? sanitize_text_field( (string) $repo['latest'] ) : '-';
+			if ( $latest === '' ) $latest = '-';
+			$sanitized[ $key ] = [
+				'type' => $type,
+				'owner' => $owner,
+				'repo' => $name,
+				'slug' => $slug,
+				'latest' => $latest,
+			];
+		}
+		return $sanitized;
+	}
+
+	private function enqueue_notice( string $type, string $message ) : void {
+		$user_id = get_current_user_id();
+		if ( ! $user_id || $message === '' ) {
+			return;
+		}
+		$allowed = [
+			'success',
+			'error',
+			'info',
+		];
+		if ( ! in_array( $type, $allowed, true ) ) {
+			$type = 'info';
+		}
+		$key = self::NOTICE_KEY_PREFIX . $user_id;
+		$existing = get_transient( $key );
+		if ( ! is_array( $existing ) ) {
+			$existing = [];
+		}
+		$existing[] = [
+			'type'    => $type,
+			'message' => $message,
+		];
+		set_transient( $key, $existing, 2 * MINUTE_IN_SECONDS );
+	}
+
+	public function render_flash_notices() : void {
+		$user_id = get_current_user_id();
+		if ( ! $user_id ) {
+			return;
+		}
+		$key = self::NOTICE_KEY_PREFIX . $user_id;
+		$queue = get_transient( $key );
+		if ( ! is_array( $queue ) || $queue === [] ) {
+			return;
+		}
+		delete_transient( $key );
+		$classes = [
+			'success' => 'notice notice-success',
+			'error'   => 'notice notice-error',
+			'info'    => 'notice notice-info',
+		];
+		foreach ( $queue as $notice ) {
+			if ( empty( $notice['message'] ) ) {
+				continue;
+			}
+			$type = isset( $notice['type'], $classes[ $notice['type'] ] ) ? $notice['type'] : 'info';
+			printf(
+				'<div class="%s"><p>%s</p></div>',
+				esc_attr( $classes[ $type ] ),
+				esc_html( $notice['message'] )
+			);
+		}
 	}
 
 	private function api_get( string $url ) {
@@ -89,7 +178,13 @@ class GIU_Plugin {
 		$code = wp_remote_retrieve_response_code( $res );
 		$body = wp_remote_retrieve_body( $res );
 		if ( $code < 200 || $code >= 300 ) {
-			return new WP_Error( 'giu_http', 'GitHub API error: HTTP ' . $code . ' – ' . substr( $body, 0, 200 ) );
+			return new WP_Error(
+				'giu_http',
+				'GitHub API error: HTTP ' . $code . ' – ' . substr( $body, 0, 200 ),
+				[
+					'status' => $code,
+				]
+			);
 		}
 		$json = json_decode( $body, true );
 		if ( null === $json ) {
@@ -110,6 +205,113 @@ class GIU_Plugin {
 	private function release_zipball( $release ) : ?string {
 		if ( is_wp_error( $release ) ) return null;
 		return isset( $release['zipball_url'] ) ? $release['zipball_url'] : null;
+	}
+
+	private function get_error_status( WP_Error $error ) : ?int {
+		$data = $error->get_error_data();
+		if ( is_array( $data ) && isset( $data['status'] ) ) {
+			$status = (int) $data['status'];
+			return $status > 0 ? $status : null;
+		}
+		if ( is_int( $data ) && $data > 0 ) {
+			return $data;
+		}
+		return null;
+	}
+
+	private function get_default_branch( string $owner, string $repo ) {
+		$details = $this->api_get(
+			sprintf(
+				'https://api.github.com/repos/%s/%s',
+				rawurlencode( $owner ),
+				rawurlencode( $repo )
+			)
+		);
+		if ( is_wp_error( $details ) ) return $details;
+		if ( isset( $details['default_branch'] ) && $details['default_branch'] !== '' ) {
+			return (string) $details['default_branch'];
+		}
+		return null;
+	}
+
+	private function fallback_branch_zip( string $owner, string $repo ) {
+		$branch = $this->get_default_branch( $owner, $repo );
+		if ( is_wp_error( $branch ) ) {
+			return $branch;
+		}
+		$branch = $branch ?: 'main';
+		return $this->repo_default_branch_zip( $owner, $repo, $branch );
+	}
+
+	private function with_github_download_auth( string $download_url, callable $callback ) {
+		$opts = self::get_options();
+		$token = isset( $opts['token'] ) ? trim( (string) $opts['token'] ) : '';
+		$filter = null;
+		if ( $token !== '' && str_starts_with( $download_url, 'https://api.github.com/' ) ) {
+			$filter = static function( $args, $url ) use ( $download_url, $token ) {
+				if ( $url !== $download_url ) return $args;
+				$args['headers']['Authorization'] = 'token ' . $token;
+				if ( empty( $args['headers']['User-Agent'] ) ) {
+					$args['headers']['User-Agent'] = 'giu-wordpress/' . self::VERSION;
+				}
+				return $args;
+			};
+			add_filter( 'http_request_args', $filter, 10, 2 );
+		}
+		try {
+			return $callback();
+		} finally {
+			if ( $filter ) {
+				remove_filter( 'http_request_args', $filter, 10 );
+			}
+		}
+	}
+
+	private function with_install_source_override( string $type, string $slug, callable $callback ) {
+		$expected = $type === 'plugin' ? trim( dirname( $slug ), '.' . DIRECTORY_SEPARATOR ) : $slug;
+		if ( $expected === '' ) {
+			return $callback();
+		}
+		$this->current_install = [
+			'type'     => $type,
+			'expected' => $expected,
+		];
+		add_filter( 'upgrader_source_selection', [ $this, 'enforce_source_directory' ], 10, 4 );
+		try {
+			return $callback();
+		} finally {
+			remove_filter( 'upgrader_source_selection', [ $this, 'enforce_source_directory' ], 10 );
+			$this->current_install = null;
+		}
+	}
+
+	public function enforce_source_directory( $source, $remote_source, $upgrader, $hook_extra ) {
+		if ( empty( $this->current_install ) || ! is_string( $source ) ) {
+			return $source;
+		}
+		if ( empty( $hook_extra['type'] ) || $hook_extra['type'] !== $this->current_install['type'] ) {
+			return $source;
+		}
+		$current = basename( $source );
+		$expected = $this->current_install['expected'];
+		if ( $current === $expected ) {
+			return $source;
+		}
+		global $wp_filesystem;
+		if ( ! $wp_filesystem ) {
+			WP_Filesystem();
+		}
+		if ( ! $wp_filesystem ) {
+			return new WP_Error( 'giu_fs', 'Unable to initialize filesystem.' );
+		}
+		$target = trailingslashit( dirname( $source ) ) . $expected;
+		if ( $wp_filesystem->exists( $target ) ) {
+			$wp_filesystem->delete( $target, true );
+		}
+		if ( ! $wp_filesystem->move( $source, $target, true ) ) {
+			return new WP_Error( 'giu_move', 'Unable to prepare package directory.' );
+		}
+		return trailingslashit( $target );
 	}
 
 	public function render_settings() {
@@ -253,16 +455,12 @@ class GIU_Plugin {
 		$r = $opts['repos'][ $id ];
 		$download_url = $this->get_download_url( $r['owner'], $r['repo'] );
 		if ( is_wp_error( $download_url ) ) {
-			add_action( 'admin_notices', function() use ( $download_url ) {
-				printf('<div class="notice notice-error"><p>%s</p></div>', esc_html( $download_url->get_error_message() ) );
-			});
+			$this->enqueue_notice( 'error', $download_url->get_error_message() );
 			return;
 		}
-		$ok = $this->install_package( $r['type'], $download_url );
+		$ok = $this->install_package( $r['type'], $download_url, $r['slug'] );
 		if ( is_wp_error( $ok ) ) {
-			add_action( 'admin_notices', function() use ( $ok ) {
-				printf('<div class="notice notice-error"><p>Install failed: %s</p></div>', esc_html( $ok->get_error_message() ) );
-			});
+			$this->enqueue_notice( 'error', 'Install failed: ' . $ok->get_error_message() );
 			return;
 		}
 		$release = $this->latest_release( $r['owner'], $r['repo'] );
@@ -270,33 +468,67 @@ class GIU_Plugin {
 			$opts['repos'][ $id ]['latest'] = $release['tag_name'];
 			self::update_options( $opts );
 		}
-		add_action( 'admin_notices', function() use ( $r ) {
-			printf('<div class="notice notice-success"><p>Installed/updated %s from %s/%s.</p></div>', esc_html( $r['type'] ), esc_html( $r['owner'] ), esc_html( $r['repo'] ) );
-		});
+		$this->enqueue_notice(
+			'success',
+			sprintf(
+				'Installed/updated %s from %s/%s.',
+				$r['type'],
+				$r['owner'],
+				$r['repo']
+			)
+		);
 	}
 
 	private function get_download_url( string $owner, string $repo ) {
 		$release = $this->latest_release( $owner, $repo );
-		if ( is_wp_error( $release ) ) return $release;
-		$zip = $this->release_zipball( $release );
-		if ( ! $zip ) {
-			// Fallback to default branch
-			$zip = $this->repo_default_branch_zip( $owner, $repo, 'main' );
+		if ( is_wp_error( $release ) ) {
+			$status = $this->get_error_status( $release );
+			if ( $status === 404 ) {
+				return $this->fallback_branch_zip( $owner, $repo );
+			}
+			return $release;
 		}
-		return $zip;
+		$zip = $this->release_zipball( $release );
+		if ( $zip ) {
+			return $zip;
+		}
+		return $this->fallback_branch_zip( $owner, $repo );
 	}
 
-	private function install_package( string $type, string $download_url ) {
+	private function install_package( string $type, string $download_url, string $slug ) {
 		include_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 		include_once ABSPATH . 'wp-admin/includes/file.php';
 		WP_Filesystem();
 		$skin = new Automatic_Upgrader_Skin();
-		if ( $type === 'theme' ) {
-			$upgrader = new Theme_Upgrader( $skin );
-			$result = $upgrader->install( $download_url );
-		} else {
-			$upgrader = new Plugin_Upgrader( $skin );
-			$result = $upgrader->install( $download_url );
+		$result = $this->with_github_download_auth(
+			$download_url,
+			function() use ( $type, $download_url, $skin, $slug ) {
+				return $this->with_install_source_override(
+					$type,
+					$slug,
+					function() use ( $type, $download_url, $skin ) {
+						if ( $type === 'theme' ) {
+							$upgrader = new Theme_Upgrader( $skin );
+							return $upgrader->install(
+								$download_url,
+								[
+									'overwrite_package' => true,
+								]
+							);
+						}
+						$upgrader = new Plugin_Upgrader( $skin );
+						return $upgrader->install(
+							$download_url,
+							[
+								'overwrite_package' => true,
+							]
+						);
+					}
+				);
+			}
+		);
+		if ( is_wp_error( $result ) ) {
+			return $result;
 		}
 		if ( ! $result ) {
 			return new WP_Error( 'giu_install', 'Upgrader reported failure.' );
