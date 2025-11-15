@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Kob Git Updater
  * Description: Install and auto-update plugins & themes from GitHub releases (or branches). Adds a settings page for a GitHub token and managed repos.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Monsenhor Filipo
  * License: GPL-2.0-or-later
  */
@@ -11,8 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 class GIU_Plugin {
 	const OPTION = 'giu_options';
-	const VERSION = '1.1.0';
+	const VERSION = '1.2.0';
 	private const NOTICE_KEY_PREFIX = 'giu_flash_';
+	private const LOG_PREFIX = 'kob_git_updater';
 	private ?array $current_install = null;
 
 	public function __construct() {
@@ -41,6 +42,148 @@ class GIU_Plugin {
 
 	public static function update_options( array $opts ) : void {
 		update_option( self::OPTION, $opts );
+	}
+
+	/**
+	 * Log error messages if WP_DEBUG_LOG is enabled
+	 */
+	private function log_error( string $message, array $context = [] ) : void {
+		if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			$log_message = sprintf( '[%s] %s', self::LOG_PREFIX, $message );
+			if ( ! empty( $context ) ) {
+				$log_message .= ' Context: ' . wp_json_encode( $context );
+			}
+			error_log( $log_message );
+		}
+	}
+
+	/**
+	 * Log info messages if WP_DEBUG_LOG is enabled
+	 */
+	private function log_info( string $message, array $context = [] ) : void {
+		if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			$log_message = sprintf( '[%s] %s', self::LOG_PREFIX, $message );
+			if ( ! empty( $context ) ) {
+				$log_message .= ' Context: ' . wp_json_encode( $context );
+			}
+			error_log( $log_message );
+		}
+	}
+
+	/**
+	 * Convert WP_Error to user-friendly message
+	 */
+	private function format_error_message( WP_Error $error ) : string {
+		$code = $error->get_error_code();
+		$message = $error->get_error_message();
+		
+		switch ( $code ) {
+			case 'giu_http':
+				return __( 'Failed to connect to GitHub. Please check your internet connection and try again.', 'kob-git-updater' );
+			case 'giu_json':
+				return __( 'Received invalid response from GitHub. Please try again later.', 'kob-git-updater' );
+			case 'giu_fs':
+				return __( 'WordPress filesystem error. Please check file permissions.', 'kob-git-updater' );
+			case 'giu_move':
+				return __( 'Failed to prepare plugin files. Please try again.', 'kob-git-updater' );
+			case 'giu_install':
+				return __( 'Installation failed. Please check the plugin/theme files are valid.', 'kob-git-updater' );
+			case 'giu_validation':
+				return $message; // Already user-friendly
+			default:
+				return sprintf( __( 'An error occurred: %s', 'kob-git-updater' ), $message );
+		}
+	}
+
+	/**
+	 * Validate repository type
+	 */
+	private function validate_repo_type( string $type ) : string {
+		$type = sanitize_text_field( trim( $type ) );
+		return in_array( $type, [ 'plugin', 'theme' ], true ) ? $type : 'plugin';
+	}
+
+	/**
+	 * Validate owner/repo format
+	 */
+	private function validate_owner_repo( string $owner_repo ) {
+		$owner_repo = sanitize_text_field( trim( $owner_repo ) );
+		
+		if ( empty( $owner_repo ) ) {
+			return new WP_Error( 'giu_validation', __( 'Repository name is required.', 'kob-git-updater' ) );
+		}
+		
+		if ( ! preg_match( '/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/', $owner_repo ) ) {
+			return new WP_Error( 'giu_validation', __( 'Repository name must be in format "owner/repository" with only letters, numbers, dots, hyphens, and underscores.', 'kob-git-updater' ) );
+		}
+		
+		$parts = explode( '/', $owner_repo, 2 );
+		if ( count( $parts ) !== 2 || empty( $parts[0] ) || empty( $parts[1] ) ) {
+			return new WP_Error( 'giu_validation', __( 'Repository name must contain both owner and repository name separated by a slash.', 'kob-git-updater' ) );
+		}
+		
+		return array_map( 'trim', $parts );
+	}
+
+	/**
+	 * Validate WordPress slug based on type
+	 */
+	private function validate_slug( string $slug, string $type ) {
+		$slug = sanitize_text_field( trim( $slug ) );
+		
+		if ( empty( $slug ) ) {
+			return new WP_Error( 'giu_validation', __( 'WordPress slug is required.', 'kob-git-updater' ) );
+		}
+		
+		if ( $type === 'plugin' ) {
+			// Plugin format: folder/file.php
+			if ( ! preg_match( '/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+\.php$/', $slug ) ) {
+				return new WP_Error( 'giu_validation', __( 'Plugin slug must be in format "folder/file.php" with valid characters only.', 'kob-git-updater' ) );
+			}
+		} else {
+			// Theme format: directory-name
+			if ( ! preg_match( '/^[a-zA-Z0-9._-]+$/', $slug ) ) {
+				return new WP_Error( 'giu_validation', __( 'Theme slug must contain only letters, numbers, dots, hyphens, and underscores.', 'kob-git-updater' ) );
+			}
+		}
+		
+		return $slug;
+	}
+
+	/**
+	 * Find existing repository by owner/repo name
+	 */
+	private function find_existing_repo( string $owner, string $repo, array $repos ) : ?string {
+		foreach ( $repos as $id => $r ) {
+			if ( $r['owner'] === $owner && $r['repo'] === $repo ) {
+				return $id;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Safely save options with validation
+	 */
+	private function save_options_safely( array $opts ) : bool {
+		// Validate options structure
+		if ( ! isset( $opts['token'], $opts['repos'] ) || ! is_array( $opts['repos'] ) ) {
+			$this->log_error( 'Invalid options structure when saving', [ 'keys' => array_keys( $opts ) ] );
+			return false;
+		}
+		
+		// Sanitize token
+		$opts['token'] = sanitize_text_field( $opts['token'] );
+		
+		// Validate each repository
+		foreach ( $opts['repos'] as $id => $repo ) {
+			if ( ! isset( $repo['type'], $repo['owner'], $repo['repo'], $repo['slug'] ) ) {
+				$this->log_error( 'Invalid repository structure', [ 'id' => $id, 'repo' => $repo ] );
+				return false;
+			}
+		}
+		
+		return update_option( self::OPTION, $opts );
 	}
 
 	public function enqueue_admin_assets( $hook ) {
@@ -218,7 +361,17 @@ class GIU_Plugin {
 		}
 	}
 
-	private function api_get( string $url ) {
+	private function api_get( string $url, int $cache_duration = HOUR_IN_SECONDS ) {
+		// Create cache key from URL
+		$cache_key = 'giu_api_' . md5( $url );
+		
+		// Try to get from cache first
+		$cached_response = get_transient( $cache_key );
+		if ( false !== $cached_response ) {
+			$this->log_info( 'Using cached GitHub API response', [ 'url' => $url ] );
+			return $cached_response;
+		}
+		
 		$opts = self::get_options();
 		$args = [
 			'headers' => [
@@ -230,29 +383,53 @@ class GIU_Plugin {
 		if ( ! empty( $opts['token'] ) ) {
 			$args['headers']['Authorization'] = 'token ' . $opts['token'];
 		}
+		
+		$this->log_info( 'Making GitHub API request', [ 'url' => $url ] );
 		$res = wp_remote_get( $url, $args );
-		if ( is_wp_error( $res ) ) return $res;
+		
+		if ( is_wp_error( $res ) ) {
+			$this->log_error( 'GitHub API request failed', [ 'url' => $url, 'error' => $res->get_error_message() ] );
+			return $res;
+		}
+		
 		$code = wp_remote_retrieve_response_code( $res );
 		$body = wp_remote_retrieve_body( $res );
+		
 		if ( $code < 200 || $code >= 300 ) {
+			$error_message = 'GitHub API error: HTTP ' . $code . ' – ' . substr( $body, 0, 200 );
+			$this->log_error( $error_message, [ 'url' => $url, 'status_code' => $code ] );
 			return new WP_Error(
 				'giu_http',
-				'GitHub API error: HTTP ' . $code . ' – ' . substr( $body, 0, 200 ),
+				$error_message,
 				[
 					'status' => $code,
 				]
 			);
 		}
+		
 		$json = json_decode( $body, true );
 		if ( null === $json ) {
+			$this->log_error( 'Invalid JSON from GitHub API', [ 'url' => $url, 'body_preview' => substr( $body, 0, 200 ) ] );
 			return new WP_Error( 'giu_json', 'Invalid JSON from GitHub' );
 		}
+		
+		// Cache successful responses
+		set_transient( $cache_key, $json, $cache_duration );
+		$this->log_info( 'GitHub API response cached', [ 'url' => $url, 'cache_duration' => $cache_duration ] );
+		
 		return $json;
 	}
 
 	private function latest_release( string $owner, string $repo ) {
 		$url = sprintf( 'https://api.github.com/repos/%s/%s/releases/latest', rawurlencode( $owner ), rawurlencode( $repo ) );
-		return $this->api_get( $url );
+		
+		// Allow filtering of the GitHub API URL
+		$url = apply_filters( 'giu_github_release_url', $url, $owner, $repo );
+		
+		$response = $this->api_get( $url );
+		
+		// Allow filtering of the release data
+		return apply_filters( 'giu_github_release_data', $response, $owner, $repo );
 	}
 
 	private function repo_default_branch_zip( string $owner, string $repo, string $branch = 'main' ) : string {
@@ -1058,35 +1235,86 @@ class GIU_Plugin {
 	}
 
 	public function handle_add_repo() {
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Forbidden' );
+		// Enhanced security checks
+		if ( ! current_user_can( 'manage_options' ) ) {
+			$this->log_error( 'Unauthorized attempt to add repository', [ 'user_id' => get_current_user_id() ] );
+			wp_die( __( 'You do not have permission to perform this action.', 'kob-git-updater' ), 403 );
+		}
+		
 		check_admin_referer( 'giu_add_repo' );
-		$type = isset($_POST['type']) && $_POST['type'] === 'theme' ? 'theme' : 'plugin';
-		$owner_repo = isset($_POST['owner_repo']) ? trim( wp_unslash( $_POST['owner_repo'] ) ) : '';
-		$slug = isset($_POST['slug']) ? trim( wp_unslash( $_POST['slug'] ) ) : '';
-		if ( ! $owner_repo || ! $slug ) {
-			wp_redirect( add_query_arg( 'giu_notice', 'missing', admin_url( 'options-general.php?page=giu-settings' ) ) );
+		
+		// Validate and sanitize inputs
+		$type = $this->validate_repo_type( $_POST['type'] ?? '' );
+		$owner_repo = $this->validate_owner_repo( $_POST['owner_repo'] ?? '' );
+		$slug = $this->validate_slug( $_POST['slug'] ?? '', $type );
+		$install_now = ! empty( $_POST['install_now'] ) && $_POST['install_now'] === '1';
+		
+		// Check for validation errors
+		if ( is_wp_error( $owner_repo ) ) {
+			$this->enqueue_notice( 'error', $this->format_error_message( $owner_repo ) );
+			$this->log_error( 'Invalid owner/repo format', [ 'input' => $_POST['owner_repo'] ?? '' ] );
+			wp_safe_redirect( admin_url( 'admin.php?page=giu-settings' ) );
 			exit;
 		}
-		list( $owner, $repo ) = array_pad( array_map( 'trim', explode( '/', $owner_repo, 2 ) ), 2, '' );
-		if ( ! $owner || ! $repo ) {
-			wp_redirect( add_query_arg( 'giu_notice', 'bador', admin_url( 'options-general.php?page=giu-settings' ) ) );
+		
+		if ( is_wp_error( $slug ) ) {
+			$this->enqueue_notice( 'error', $this->format_error_message( $slug ) );
+			$this->log_error( 'Invalid slug format', [ 'input' => $_POST['slug'] ?? '', 'type' => $type ] );
+			wp_safe_redirect( admin_url( 'admin.php?page=giu-settings' ) );
 			exit;
 		}
+		
+		// Extract owner and repo
+		list( $owner, $repo ) = $owner_repo;
+		
+		// Check for duplicate repositories
 		$opts = self::get_options();
+		$existing_id = $this->find_existing_repo( $owner, $repo, $opts['repos'] );
+		if ( $existing_id ) {
+			$this->enqueue_notice( 'error', sprintf(
+				/* translators: 1: repository name */
+				__( 'Repository %s is already being managed.', 'kob-git-updater' ),
+				$owner . '/' . $repo
+			) );
+			wp_safe_redirect( admin_url( 'admin.php?page=giu-settings' ) );
+			exit;
+		}
+		
+		// Create repository entry
 		$id = sanitize_title( $type . '-' . $owner . '-' . $repo . '-' . $slug );
 		$opts['repos'][ $id ] = [
 			'type' => $type,
-			'owner' => $owner,
-			'repo' => $repo,
-			'slug' => $slug,
+			'owner' => sanitize_text_field( $owner ),
+			'repo' => sanitize_text_field( $repo ),
+			'slug' => sanitize_text_field( $slug ),
 			'latest' => '-',
+			'added' => current_time( 'timestamp' ),
 		];
-		self::update_options( $opts );
-
-		if ( ! empty( $_POST['install_now'] ) ) {
-			$this->do_install_by_id( $id );
+		
+		// Save options with validation
+		if ( ! $this->save_options_safely( $opts ) ) {
+			$this->enqueue_notice( 'error', __( 'Failed to save repository settings. Please try again.', 'kob-git-updater' ) );
+			wp_safe_redirect( admin_url( 'admin.php?page=giu-settings' ) );
+			exit;
 		}
-		wp_redirect( admin_url( 'options-general.php?page=giu-settings' ) );
+		
+		$this->log_info( 'Repository added successfully', [ 'repo' => $owner . '/' . $repo, 'type' => $type, 'slug' => $slug ] );
+		
+		// Fire action hook
+		do_action( 'giu_repo_added', $opts['repos'][ $id ], $id );
+		
+		// Install immediately if requested
+		if ( $install_now ) {
+			$this->do_install_by_id( $id );
+		} else {
+			$this->enqueue_notice( 'success', sprintf(
+				/* translators: 1: repository name */
+				__( 'Repository %s added successfully.', 'kob-git-updater' ),
+				$owner . '/' . $repo
+			) );
+		}
+		
+		wp_safe_redirect( admin_url( 'admin.php?page=giu-settings' ) );
 		exit;
 	}
 
@@ -1112,32 +1340,56 @@ class GIU_Plugin {
 
 	private function do_install_by_id( string $id ) : void {
 		$opts = self::get_options();
-		if ( empty( $opts['repos'][ $id ] ) ) return;
+		if ( empty( $opts['repos'][ $id ] ) ) {
+			$this->log_error( 'Attempted to install unknown repository', [ 'id' => $id ] );
+			return;
+		}
+		
 		$r = $opts['repos'][ $id ];
+		$this->log_info( 'Starting installation', [ 'repo' => $r['owner'] . '/' . $r['repo'], 'type' => $r['type'] ] );
+		
+		// Fire pre-install action
+		do_action( 'giu_before_install', $r, $id );
+		
 		$download_url = $this->get_download_url( $r['owner'], $r['repo'] );
 		if ( is_wp_error( $download_url ) ) {
-			$this->enqueue_notice( 'error', $download_url->get_error_message() );
+			$friendly_message = $this->format_error_message( $download_url );
+			$this->enqueue_notice( 'error', $friendly_message );
+			$this->log_error( 'Failed to get download URL', [ 'repo' => $r['owner'] . '/' . $r['repo'], 'error' => $download_url->get_error_message() ] );
+			do_action( 'giu_install_failed', $r, $id, $download_url );
 			return;
 		}
+		
 		$ok = $this->install_package( $r['type'], $download_url, $r['slug'] );
 		if ( is_wp_error( $ok ) ) {
-			$this->enqueue_notice( 'error', 'Install failed: ' . $ok->get_error_message() );
+			$friendly_message = $this->format_error_message( $ok );
+			$this->enqueue_notice( 'error', sprintf( __( 'Installation failed: %s', 'kob-git-updater' ), $friendly_message ) );
+			$this->log_error( 'Package installation failed', [ 'repo' => $r['owner'] . '/' . $r['repo'], 'error' => $ok->get_error_message() ] );
+			do_action( 'giu_install_failed', $r, $id, $ok );
 			return;
 		}
+		
+		// Update latest version info
 		$release = $this->latest_release( $r['owner'], $r['repo'] );
 		if ( ! is_wp_error( $release ) && isset( $release['tag_name'] ) ) {
 			$opts['repos'][ $id ]['latest'] = $release['tag_name'];
 			self::update_options( $opts );
+			$this->log_info( 'Updated version info', [ 'repo' => $r['owner'] . '/' . $r['repo'], 'version' => $release['tag_name'] ] );
 		}
-		$this->enqueue_notice(
-			'success',
-			sprintf(
-				'Installed/updated %s from %s/%s.',
-				$r['type'],
-				$r['owner'],
-				$r['repo']
-			)
+		
+		$success_message = sprintf(
+			/* translators: 1: plugin/theme type, 2: repository owner, 3: repository name */
+			__( 'Successfully installed/updated %1$s from %2$s/%3$s.', 'kob-git-updater' ),
+			$r['type'],
+			$r['owner'],
+			$r['repo']
 		);
+		
+		$this->enqueue_notice( 'success', $success_message );
+		$this->log_info( 'Installation completed successfully', [ 'repo' => $r['owner'] . '/' . $r['repo'] ] );
+		
+		// Fire post-install action
+		do_action( 'giu_after_install', $r, $id );
 	}
 
 	private function get_download_url( string $owner, string $repo ) {
@@ -1243,9 +1495,113 @@ class GIU_Plugin {
 		}
 		return $transient;
 	}
+
+	/**
+	 * Plugin activation hook
+	 */
+	public static function on_activation() : void {
+		// Set default options if they don't exist
+		if ( false === get_option( self::OPTION ) ) {
+			add_option( self::OPTION, [
+				'token' => '',
+				'repos' => [],
+			] );
+		}
+		
+		// Clear any existing update transients to force refresh
+		delete_transient( 'update_plugins' );
+		delete_transient( 'update_themes' );
+		
+		// Log activation
+		if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			error_log( '[' . self::LOG_PREFIX . '] Plugin activated' );
+		}
+		
+		do_action( 'giu_plugin_activated' );
+	}
+
+	/**
+	 * Plugin deactivation hook
+	 */
+	public static function on_deactivation() : void {
+		// Clear all plugin-related transients
+		global $wpdb;
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+				'_transient_giu_api_%'
+			)
+		);
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+				'_transient_timeout_giu_api_%'
+			)
+		);
+		
+		// Clear update transients
+		delete_transient( 'update_plugins' );
+		delete_transient( 'update_themes' );
+		
+		// Log deactivation
+		if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			error_log( '[' . self::LOG_PREFIX . '] Plugin deactivated' );
+		}
+		
+		do_action( 'giu_plugin_deactivated' );
+	}
+
+	/**
+	 * Plugin uninstall hook
+	 */
+	public static function on_uninstall() : void {
+		// Remove all plugin options
+		delete_option( self::OPTION );
+		
+		// Remove all transients and temporary options
+		global $wpdb;
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				'_transient_giu_%',
+				'_transient_timeout_giu_%'
+			)
+		);
+		
+		// Clear any user meta related to flash notices
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+				'_transient_giu_flash_%'
+			)
+		);
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+				'_transient_timeout_giu_flash_%'
+			)
+		);
+		
+		// Log uninstall
+		if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			error_log( '[' . self::LOG_PREFIX . '] Plugin uninstalled' );
+		}
+		
+		do_action( 'giu_plugin_uninstalled' );
+	}
 }
 
+// Initialize plugin
 add_action( 'plugins_loaded', function(){ new GIU_Plugin(); } );
+
+// Plugin activation hook
+register_activation_hook( __FILE__, [ 'GIU_Plugin', 'on_activation' ] );
+
+// Plugin deactivation hook
+register_deactivation_hook( __FILE__, [ 'GIU_Plugin', 'on_deactivation' ] );
+
+// Plugin uninstall hook
+register_uninstall_hook( __FILE__, [ 'GIU_Plugin', 'on_uninstall' ] );
 
 /*
 USAGE
