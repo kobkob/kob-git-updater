@@ -1,0 +1,415 @@
+<?php
+
+namespace KobGitUpdater\Repository;
+
+use KobGitUpdater\Core\Interfaces\RepositoryInterface;
+use KobGitUpdater\Core\Interfaces\GitHubApiClientInterface;
+use KobGitUpdater\Repository\Models\Repository;
+use KobGitUpdater\Utils\Logger;
+
+/**
+ * Repository Manager
+ * 
+ * Manages plugin and theme repositories, handles CRUD operations,
+ * and provides repository-specific functionality.
+ */
+class RepositoryManager implements RepositoryInterface
+{
+    /** @var GitHubApiClientInterface */
+    private $github_client;
+
+    /** @var Logger */
+    private $logger;
+
+    /** @var string WordPress option name for storing repositories */
+    private const OPTION_NAME = 'giu_repositories';
+
+    public function __construct(GitHubApiClientInterface $github_client, Logger $logger)
+    {
+        $this->github_client = $github_client;
+        $this->logger = $logger;
+    }
+
+    /**
+     * Get all repositories
+     * 
+     * @return Repository[]
+     */
+    public function get_all(): array
+    {
+        $repositories_data = get_option(self::OPTION_NAME, []);
+        $repositories = [];
+
+        foreach ($repositories_data as $repo_data) {
+            try {
+                $repositories[] = Repository::from_array($repo_data);
+            } catch (\InvalidArgumentException $e) {
+                $this->logger->log_error("Invalid repository data: " . $e->getMessage());
+                continue;
+            }
+        }
+
+        return $repositories;
+    }
+
+    /**
+     * Get repository by key (owner/repo format)
+     */
+    public function get(string $key): ?Repository
+    {
+        $repositories = $this->get_all();
+        
+        foreach ($repositories as $repository) {
+            if ($repository->get_key() === $key) {
+                return $repository;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Add a new repository
+     */
+    public function add(string $owner, string $repo, string $type, string $slug): bool
+    {
+        // Validate repository type
+        if (!in_array($type, ['plugin', 'theme'], true)) {
+            $this->logger->log_error("Invalid repository type: {$type}");
+            return false;
+        }
+
+        // Validate owner/repo format
+        if (!$this->validate_owner_repo($owner, $repo)) {
+            return false;
+        }
+
+        // Check if repository already exists
+        $key = "{$owner}/{$repo}";
+        if ($this->get($key) !== null) {
+            $this->logger->log_error("Repository {$key} already exists");
+            return false;
+        }
+
+        // Verify repository exists on GitHub
+        $repo_info = $this->github_client->get_repository_info($owner, $repo);
+        if ($repo_info === null) {
+            $this->logger->log_error("Failed to verify repository {$key} on GitHub");
+            return false;
+        }
+
+        // Create repository object
+        $repository = new Repository(
+            $owner,
+            $repo,
+            $type,
+            $slug,
+            $repo_info['default_branch'] ?? 'main',
+            $repo_info['private'] ?? false
+        );
+
+        // Add to stored repositories
+        $repositories_data = get_option(self::OPTION_NAME, []);
+        $repositories_data[] = $repository->to_array();
+
+        $success = update_option(self::OPTION_NAME, $repositories_data);
+
+        if ($success) {
+            $this->logger->log_info("Added repository: {$key} (type: {$type}, slug: {$slug})");
+            
+            // Fire action hook for extensions
+            do_action('giu_repo_added', $repository);
+        } else {
+            $this->logger->log_error("Failed to save repository {$key} to database");
+        }
+
+        return $success;
+    }
+
+    /**
+     * Update an existing repository
+     */
+    public function update(string $key, array $updates): bool
+    {
+        $repositories = $this->get_all();
+        $found = false;
+
+        foreach ($repositories as $index => $repository) {
+            if ($repository->get_key() === $key) {
+                // Apply updates
+                if (isset($updates['slug'])) {
+                    $repository->set_slug($updates['slug']);
+                }
+                if (isset($updates['default_branch'])) {
+                    $repository->set_default_branch($updates['default_branch']);
+                }
+
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found) {
+            $this->logger->log_error("Repository {$key} not found for update");
+            return false;
+        }
+
+        // Save updated repositories
+        $repositories_data = array_map(fn($repo) => $repo->to_array(), $repositories);
+        $success = update_option(self::OPTION_NAME, $repositories_data);
+
+        if ($success) {
+            $this->logger->log_info("Updated repository: {$key}");
+        } else {
+            $this->logger->log_error("Failed to update repository {$key}");
+        }
+
+        return $success;
+    }
+
+    /**
+     * Remove a repository
+     */
+    public function remove(string $key): bool
+    {
+        $repositories = $this->get_all();
+        $filtered_repositories = [];
+        $found = false;
+
+        foreach ($repositories as $repository) {
+            if ($repository->get_key() === $key) {
+                $found = true;
+                continue; // Skip this repository (remove it)
+            }
+            $filtered_repositories[] = $repository;
+        }
+
+        if (!$found) {
+            $this->logger->log_error("Repository {$key} not found for removal");
+            return false;
+        }
+
+        // Save filtered repositories
+        $repositories_data = array_map(fn($repo) => $repo->to_array(), $filtered_repositories);
+        $success = update_option(self::OPTION_NAME, $repositories_data);
+
+        if ($success) {
+            $this->logger->log_info("Removed repository: {$key}");
+            
+            // Fire action hook for extensions
+            do_action('giu_repo_removed', $key);
+        } else {
+            $this->logger->log_error("Failed to remove repository {$key}");
+        }
+
+        return $success;
+    }
+
+    /**
+     * Get repositories by type
+     * 
+     * @return Repository[]
+     */
+    public function get_by_type(string $type): array
+    {
+        $all_repositories = $this->get_all();
+        
+        return array_filter($all_repositories, fn($repo) => $repo->get_type() === $type);
+    }
+
+    /**
+     * Check for available updates across all repositories
+     * 
+     * @return array Array of repositories with available updates
+     */
+    public function check_for_updates(): array
+    {
+        $repositories = $this->get_all();
+        $updates_available = [];
+
+        foreach ($repositories as $repository) {
+            $update_info = $this->check_repository_update($repository);
+            if ($update_info !== null) {
+                $updates_available[] = [
+                    'repository' => $repository,
+                    'update_info' => $update_info
+                ];
+            }
+        }
+
+        return $updates_available;
+    }
+
+    /**
+     * Check if a specific repository has updates
+     */
+    public function check_repository_update(Repository $repository): ?array
+    {
+        $current_version = $this->get_current_version($repository);
+        if ($current_version === null) {
+            return null;
+        }
+
+        // Try to get latest release first
+        $latest_release = $this->github_client->get_latest_release(
+            $repository->get_owner(),
+            $repository->get_repo()
+        );
+
+        if ($latest_release !== null) {
+            $latest_version = ltrim($latest_release['tag_name'], 'v');
+            
+            if (version_compare($latest_version, $current_version, '>')) {
+                return [
+                    'version' => $latest_version,
+                    'download_url' => $this->github_client->get_download_url(
+                        $repository->get_owner(),
+                        $repository->get_repo(),
+                        $latest_release['tag_name']
+                    ),
+                    'release_notes' => $latest_release['body'] ?? '',
+                    'release_date' => $latest_release['published_at'] ?? ''
+                ];
+            }
+        }
+
+        // If no releases or no newer version, check default branch
+        $repo_info = $this->github_client->get_repository_info(
+            $repository->get_owner(),
+            $repository->get_repo()
+        );
+
+        if ($repo_info !== null) {
+            // For branch-based updates, we consider any push as a potential update
+            // This is a simple implementation - could be enhanced with commit comparison
+            return [
+                'version' => 'dev-' . $repository->get_default_branch(),
+                'download_url' => $this->github_client->get_download_url(
+                    $repository->get_owner(),
+                    $repository->get_repo(),
+                    $repository->get_default_branch()
+                ),
+                'release_notes' => 'Development version from ' . $repository->get_default_branch() . ' branch',
+                'release_date' => $repo_info['updated_at'] ?? ''
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Get current version of installed plugin/theme
+     */
+    private function get_current_version(Repository $repository): ?string
+    {
+        if ($repository->get_type() === 'plugin') {
+            return $this->get_plugin_version($repository->get_slug());
+        } else {
+            return $this->get_theme_version($repository->get_slug());
+        }
+    }
+
+    /**
+     * Get current plugin version
+     */
+    private function get_plugin_version(string $plugin_slug): ?string
+    {
+        if (!function_exists('get_plugin_data')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        $plugin_file = WP_PLUGIN_DIR . '/' . $plugin_slug;
+        
+        // Try different plugin file locations
+        $possible_files = [
+            $plugin_file . '.php',
+            $plugin_file . '/' . basename($plugin_slug) . '.php',
+            $plugin_file . '/index.php'
+        ];
+
+        foreach ($possible_files as $file) {
+            if (file_exists($file)) {
+                $plugin_data = get_plugin_data($file);
+                return $plugin_data['Version'] ?? null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get current theme version
+     */
+    private function get_theme_version(string $theme_slug): ?string
+    {
+        $theme = wp_get_theme($theme_slug);
+        
+        if ($theme->exists()) {
+            return $theme->get('Version');
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate owner and repository name format
+     */
+    private function validate_owner_repo(string $owner, string $repo): bool
+    {
+        // GitHub username/organization rules: 1-39 chars, alphanumeric + hyphens, can't start/end with hyphen
+        if (!preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/', $owner)) {
+            $this->logger->log_error("Invalid GitHub owner format: {$owner}");
+            return false;
+        }
+
+        // Repository name rules: similar to username but allows dots and underscores
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $repo)) {
+            $this->logger->log_error("Invalid GitHub repository format: {$repo}");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Refresh repository information from GitHub
+     */
+    public function refresh_repository_info(string $key): bool
+    {
+        $repository = $this->get($key);
+        if ($repository === null) {
+            return false;
+        }
+
+        $repo_info = $this->github_client->get_repository_info(
+            $repository->get_owner(),
+            $repository->get_repo()
+        );
+
+        if ($repo_info === null) {
+            return false;
+        }
+
+        // Update repository with fresh information
+        return $this->update($key, [
+            'default_branch' => $repo_info['default_branch'] ?? 'main'
+        ]);
+    }
+
+    /**
+     * Clear all repository caches
+     */
+    public function clear_caches(): void
+    {
+        $repositories = $this->get_all();
+        
+        foreach ($repositories as $repository) {
+            $this->github_client->clear_cache(
+                $repository->get_owner(),
+                $repository->get_repo()
+            );
+        }
+
+        $this->logger->log_info("Cleared all repository caches");
+    }
+}

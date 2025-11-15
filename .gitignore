@@ -1,45 +1,96 @@
-# WordPress
-wp-config.php
-wp-content/uploads/
-wp-content/blogs.dir/
-wp-content/upgrade/*
-wp-content/backup-db/*
-wp-content/advanced-cache.php
-wp-content/wp-cache-config.php
-wp-content/cache/*
-wp-content/cache/supercache/*
+# Kob Git Updater - Complete Repository .gitignore
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Build artifacts
+/build/
+/build-dev/
+/dist/
+*.zip
 
-# IDE/Editor files
+# Plugin development files
+/plugin/vendor/
+/plugin/node_modules/
+/plugin/.phpunit.result.cache
+/plugin/coverage/
+
+# Development environment files
+/plugin/wp-config-local.php
+.env
+.env.local
+
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Logs
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Log files
 *.log
+error_log
+/plugin/docker/logs/
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+
+# Composer
+composer.phar
+
+# Docker volumes and data
+/plugin/docker/data/
+
+# Test coverage reports
+clover.xml
+phpunit-coverage.xml
+
+# WordPress uploads (if testing locally)
+wp-content/uploads/
+
+# Backup files
+*~
+*.orig
+*.rej
+
+# PHPStorm
+.idea/
+
+# VS Code
+.vscode/
+
+# Sublime Text
+*.sublime-*
+
+# Archives
+*.tar
+*.tar.gz
+*.rar
+
+# Node modules (if any frontend tools)
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Node.js
-node_modules/
-npm-debug.log
-yarn-error.log
+# Package managers
+package-lock.json
+yarn.lock
 
-# PHP
-*.tmp
-*.temp
+# Python (if any Python tools)
+__pycache__/
+*.pyc
 
-# Backup files
-*.bak
-*.orig
+# Ruby (if any Ruby tools)
+.bundle/
+.ruby-version
+
+# Local development database dumps
+*.sql
+database.sql
+dump.sql

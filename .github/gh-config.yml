@@ -1,0 +1,30 @@
+# GitHub CLI Configuration for Kob Git Updater
+# This file provides default settings for the GitHub CLI
+
+# Default editor for GitHub CLI operations
+editor: vim
+
+# Default protocol for git operations
+git_protocol: https
+
+# Default behavior for interactive prompts
+prompt: enabled
+
+# Aliases for common operations
+aliases:
+    co: pr checkout
+    pv: pr view
+    rv: repo view
+    rl: release list
+    rc: release create
+    il: issue list
+    ic: issue create
+    wl: workflow list
+    wr: run list
+
+# Browser configuration
+browser: ""
+
+# HTTP headers for API requests
+http_unix_socket: ""
+oauth_token: ""

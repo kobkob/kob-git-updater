@@ -1,0 +1,55 @@
+# Docker ignore file for Kob Git Updater
+
+# Build artifacts
+../build/
+../build-dev/
+../dist/
+coverage/
+*.zip
+
+# Development files
+.git/
+.github/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+docker/logs/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+.phpunit.result.cache
+
+# Node modules (if any)
+node_modules/
+
+# Environment files
+.env
+.env.local
+wp-config-local.php
+
+# Test files (not needed in production image)
+tests/
+phpunit.xml
+phpstan.neon
+.phpcs.xml
+
+# Documentation (not needed in runtime)
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+WARP.md
+
+# Build scripts (not needed in runtime)
+../scripts/

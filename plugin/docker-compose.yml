@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    command: '--default-authentication-plugin=mysql_native_password'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "wordpress", "-pwordpress"]
+      timeout: 20s
+      retries: 10
+
+  # WordPress with Plugin Development Environment
+  wordpress:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_DEBUG', true);
+        define('WP_DEBUG_LOG', true);
+        define('WP_DEBUG_DISPLAY', false);
+        define('SCRIPT_DEBUG', true);
+        define('WP_ENVIRONMENT_TYPE', 'development');
+    volumes:
+      # Plugin development volume (live reload)
+      - .:/opt/plugin-dev
+      - .:/var/www/html/wp-content/plugins/kob-git-updater
+      # WordPress data persistence
+      - wp_data:/var/www/html
+      # Logs
+      - ./docker/logs/wordpress:/var/log
+      # Custom WordPress configuration
+      - ./docker/wordpress/wp-config-custom.php:/var/www/html/wp-config-custom.php
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      timeout: 10s
+      retries: 5
+
+  # phpMyAdmin for database management
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: wordpress
+      PMA_PASSWORD: wordpress
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # MailCatcher for email testing
+  mailcatcher:
+    image: sj26/mailcatcher:latest
+    restart: unless-stopped
+    ports:
+      - "1080:1080"  # Web interface
+      - "1025:1025"  # SMTP server
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # Development tools container
+  tools:
+    image: php:8.1-cli
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: tail -f /dev/null
+    profiles:
+      - tools
+
+  # Test runner service
+  test:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /opt/plugin-dev
+    volumes:
+      - .:/opt/plugin-dev
+    environment:
+      - WORDPRESS_DB_HOST=db
+      - WORDPRESS_DB_USER=wordpress
+      - WORDPRESS_DB_PASSWORD=wordpress
+      - WORDPRESS_DB_NAME=wordpress_test
+    depends_on:
+      db:
+        condition: service_healthy
+    command: |
+      bash -c "
+        echo 'Setting up test environment...'
+        
+        # Create test database
+        mysql -h db -u wordpress -pwordpress -e 'CREATE DATABASE IF NOT EXISTS wordpress_test;'
+        
+        # Install test dependencies if not present
+        if [ ! -d vendor ]; then
+          composer install --no-interaction
+        fi
+        
+        # Run tests
+        composer run test
+      "
+    profiles:
+      - test
+
+volumes:
+  db_data:
+    driver: local
+  wp_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: kob-git-updater-network
