@@ -13,6 +13,25 @@ This is a **single-file WordPress plugin** (`kob-git-updater.php`) that provides
 - **WordPress Update System Integration**: Hooks into WordPress core update mechanisms for both plugins and themes
 - **Install/Update Engine**: Uses WordPress's built-in upgrader classes with custom authentication and directory handling
 
+## Project Structure
+
+**Important**: Always work from the base directory structure:
+- **Base Directory**: `/home/filipo/storage/storage/projetos/kobkob/code/Wordpress/plugins/KobGitUpdater/`
+- **Plugin Source**: `./kob-git-updater/` (relative to base)
+- **Build Scripts**: `./scripts/` (relative to base)
+- **Working Directory**: Always use the full path `/home/filipo/storage/storage/projetos/kobkob/code/Wordpress/plugins/KobGitUpdater/`
+
+```
+KobGitUpdater/
+├── kob-git-updater/          # Plugin source code and git repository
+│   ├── kob-git-updater.php   # Main plugin file
+│   ├── assets/               # Plugin assets (logos, etc)
+│   ├── WARP.md              # This file
+│   └── ...                   # Other plugin files
+├── scripts/                  # Build and deployment scripts
+└── dist/                     # Built plugin releases
+```
+
 ## Development Workflow
 
 ### Testing the Plugin
@@ -20,8 +39,11 @@ This is a **single-file WordPress plugin** (`kob-git-updater.php`) that provides
 Since this is a WordPress plugin with no automated tests, manual testing is required:
 
 ```bash
+# Navigate to base directory
+cd /home/filipo/storage/storage/projetos/kobkob/code/Wordpress/plugins/KobGitUpdater
+
 # Install in a WordPress environment by copying to wp-content/plugins/
-cp -r . /path/to/wordpress/wp-content/plugins/kob-git-updater/
+cp -r ./kob-git-updater /path/to/wordpress/wp-content/plugins/
 
 # Activate via WordPress admin or WP-CLI
 wp plugin activate kob-git-updater
@@ -58,6 +80,28 @@ The plugin integrates with WordPress transients for update checking:
 # Clear WordPress update transients via WP-CLI
 wp transient delete update_plugins
 wp transient delete update_themes
+```
+
+### Build and Release Process
+
+#### Build Scripts Location
+Build scripts are located in `../scripts/` relative to the plugin source:
+```bash
+# Navigate to base directory for build operations
+cd /home/filipo/storage/storage/projetos/kobkob/code/Wordpress/plugins/KobGitUpdater
+
+# Build scripts are in ./scripts/
+ls scripts/
+```
+
+#### Creating Releases
+```bash
+# From base directory, use build scripts to create installable packages
+# Scripts should handle:
+# - Version bumping
+# - Creating installable ZIP files
+# - Generating release notes
+# - Git tagging and pushing
 ```
 
 ## Key Implementation Details
