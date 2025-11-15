@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2024-11-15
+
+### Added
+- Comprehensive logging system with debug support (WP_DEBUG_LOG integration)
+- WordPress transient caching for GitHub API responses (1-hour default cache)
+- Advanced input validation and sanitization for all form inputs
+- Plugin lifecycle management with proper activation, deactivation, and uninstall hooks
+- WordPress action and filter hooks for extensibility:
+  - `giu_before_install`, `giu_after_install` - Installation lifecycle hooks
+  - `giu_github_release_url`, `giu_github_release_data` - GitHub API filtering
+  - `giu_plugin_activated`, `giu_plugin_deactivated`, `giu_plugin_uninstalled` - Plugin lifecycle hooks
+- Repository duplicate detection to prevent managing the same repo twice
+- User-friendly error messages with internationalization support
+- Enhanced security with improved capability checks and CSRF protection
+- Safe option saving with comprehensive structure validation
+- Detailed form validation with specific error messages for different input types
+
+### Enhanced
+- Error handling system with proper logging and user-friendly messages
+- GitHub API integration with rate limiting protection through caching
+- Security practices following WordPress standards
+- Database handling with proper WordPress APIs and validation
+- Input sanitization using WordPress core functions
+- Form processing with enhanced validation and error reporting
+
+### Technical Improvements
+- Added proper WordPress coding standards compliance
+- Implemented comprehensive error logging for debugging
+- Enhanced plugin architecture with better separation of concerns
+- Added proper option validation and sanitization
+- Improved performance through intelligent caching
+- Better handling of GitHub API rate limits
+- Enhanced plugin cleanup on deactivation and uninstall
+
+### Security
+- Enhanced nonce validation and CSRF protection
+- Improved capability checks for all admin actions
+- Better input validation with regex patterns for repository names and slugs
+- Secure handling of GitHub tokens and sensitive data
+- Protection against malformed input and injection attempts
+
+### Developer Experience
+- Added comprehensive logging for debugging and troubleshooting
+- Extensible architecture with action and filter hooks
+- Better error reporting for development and production environments
+- Improved plugin lifecycle management for clean installations and removals
+
 ## [1.1.0] - 2024-11-14
 
 ### Added
