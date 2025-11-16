@@ -48,6 +48,7 @@ require_once $autoloader;
 
 // Use the Plugin class from the Core namespace
 use KobGitUpdater\Core\Plugin;
+use KobGitUpdater\Core\Container;
 
 /**
  * Get the main plugin instance
@@ -58,7 +59,8 @@ function kob_git_updater(): Plugin {
     static $plugin = null;
     
     if ($plugin === null) {
-        $plugin = new Plugin();
+        $container = new Container();
+        $plugin = new Plugin($container);
     }
     
     return $plugin;
@@ -96,7 +98,7 @@ function kob_git_updater_init(): void {
 function kob_git_updater_activate(): void {
     try {
         // Ensure plugin is loaded
-        kob_git_updater()->activate();
+        kob_git_updater()->onActivation();
         
         // Clear any caches
         if (function_exists('wp_cache_flush')) {
@@ -124,7 +126,7 @@ function kob_git_updater_activate(): void {
  */
 function kob_git_updater_deactivate(): void {
     try {
-        kob_git_updater()->deactivate();
+        kob_git_updater()->onDeactivation();
         
         // Clear any caches
         if (function_exists('wp_cache_flush')) {
@@ -219,13 +221,11 @@ add_action('admin_init', function() {
     $current_version = get_option('kgu_version', '0.0.0');
     
     if (version_compare($current_version, KGU_VERSION, '<')) {
-        // Run migrations
-        try {
-            kob_git_updater()->migrate($current_version, KGU_VERSION);
-            update_option('kgu_version', KGU_VERSION);
-        } catch (Exception $e) {
-            error_log('Kob Git Updater migration error: ' . $e->getMessage());
-        }
+        // Update version without migration for development
+        update_option('kgu_version', KGU_VERSION);
+        
+        // Log version update
+        error_log('Kob Git Updater updated to version ' . KGU_VERSION);
     }
 });
 

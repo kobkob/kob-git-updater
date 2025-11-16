@@ -2,7 +2,6 @@
 
 namespace KobGitUpdater\Repository;
 
-use KobGitUpdater\Core\Interfaces\RepositoryInterface;
 use KobGitUpdater\Core\Interfaces\GitHubApiClientInterface;
 use KobGitUpdater\Repository\Models\Repository;
 use KobGitUpdater\Utils\Logger;
@@ -13,7 +12,7 @@ use KobGitUpdater\Utils\Logger;
  * Manages plugin and theme repositories, handles CRUD operations,
  * and provides repository-specific functionality.
  */
-class RepositoryManager implements RepositoryInterface
+class RepositoryManager
 {
     /** @var GitHubApiClientInterface */
     private $github_client;
@@ -44,7 +43,7 @@ class RepositoryManager implements RepositoryInterface
             try {
                 $repositories[] = Repository::from_array($repo_data);
             } catch (\InvalidArgumentException $e) {
-                $this->logger->log_error("Invalid repository data: " . $e->getMessage());
+                $this->logger->error("Invalid repository data: " . $e->getMessage());
                 continue;
             }
         }
@@ -75,7 +74,7 @@ class RepositoryManager implements RepositoryInterface
     {
         // Validate repository type
         if (!in_array($type, ['plugin', 'theme'], true)) {
-            $this->logger->log_error("Invalid repository type: {$type}");
+            $this->logger->error("Invalid repository type: {$type}");
             return false;
         }
 
@@ -87,14 +86,14 @@ class RepositoryManager implements RepositoryInterface
         // Check if repository already exists
         $key = "{$owner}/{$repo}";
         if ($this->get($key) !== null) {
-            $this->logger->log_error("Repository {$key} already exists");
+            $this->logger->error("Repository {$key} already exists");
             return false;
         }
 
         // Verify repository exists on GitHub
         $repo_info = $this->github_client->get_repository_info($owner, $repo);
         if ($repo_info === null) {
-            $this->logger->log_error("Failed to verify repository {$key} on GitHub");
+            $this->logger->error("Failed to verify repository {$key} on GitHub");
             return false;
         }
 
@@ -115,12 +114,12 @@ class RepositoryManager implements RepositoryInterface
         $success = update_option(self::OPTION_NAME, $repositories_data);
 
         if ($success) {
-            $this->logger->log_info("Added repository: {$key} (type: {$type}, slug: {$slug})");
+            $this->logger->info("Added repository: {$key} (type: {$type}, slug: {$slug})");
             
             // Fire action hook for extensions
             do_action('giu_repo_added', $repository);
         } else {
-            $this->logger->log_error("Failed to save repository {$key} to database");
+            $this->logger->error("Failed to save repository {$key} to database");
         }
 
         return $success;
@@ -150,7 +149,7 @@ class RepositoryManager implements RepositoryInterface
         }
 
         if (!$found) {
-            $this->logger->log_error("Repository {$key} not found for update");
+            $this->logger->error("Repository {$key} not found for update");
             return false;
         }
 
@@ -159,9 +158,9 @@ class RepositoryManager implements RepositoryInterface
         $success = update_option(self::OPTION_NAME, $repositories_data);
 
         if ($success) {
-            $this->logger->log_info("Updated repository: {$key}");
+            $this->logger->info("Updated repository: {$key}");
         } else {
-            $this->logger->log_error("Failed to update repository {$key}");
+            $this->logger->error("Failed to update repository {$key}");
         }
 
         return $success;
@@ -185,7 +184,7 @@ class RepositoryManager implements RepositoryInterface
         }
 
         if (!$found) {
-            $this->logger->log_error("Repository {$key} not found for removal");
+            $this->logger->error("Repository {$key} not found for removal");
             return false;
         }
 
@@ -194,12 +193,12 @@ class RepositoryManager implements RepositoryInterface
         $success = update_option(self::OPTION_NAME, $repositories_data);
 
         if ($success) {
-            $this->logger->log_info("Removed repository: {$key}");
+            $this->logger->info("Removed repository: {$key}");
             
             // Fire action hook for extensions
             do_action('giu_repo_removed', $key);
         } else {
-            $this->logger->log_error("Failed to remove repository {$key}");
+            $this->logger->error("Failed to remove repository {$key}");
         }
 
         return $success;
@@ -358,13 +357,13 @@ class RepositoryManager implements RepositoryInterface
     {
         // GitHub username/organization rules: 1-39 chars, alphanumeric + hyphens, can't start/end with hyphen
         if (!preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/', $owner)) {
-            $this->logger->log_error("Invalid GitHub owner format: {$owner}");
+            $this->logger->error("Invalid GitHub owner format: {$owner}");
             return false;
         }
 
         // Repository name rules: similar to username but allows dots and underscores
         if (!preg_match('/^[a-zA-Z0-9._-]+$/', $repo)) {
-            $this->logger->log_error("Invalid GitHub repository format: {$repo}");
+            $this->logger->error("Invalid GitHub repository format: {$repo}");
             return false;
         }
 
@@ -410,6 +409,6 @@ class RepositoryManager implements RepositoryInterface
             );
         }
 
-        $this->logger->log_info("Cleared all repository caches");
+        $this->logger->info("Cleared all repository caches");
     }
 }

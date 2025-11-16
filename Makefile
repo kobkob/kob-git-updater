@@ -147,8 +147,11 @@ docker-dev: ## Start Docker development environment
 	@echo "$(BLUE)Starting Docker development environment...$(NC)"
 	cd $(PLUGIN_DIR) && docker-compose up -d
 	@echo "$(GREEN)✓ Development environment started$(NC)"
-	@echo "WordPress: http://localhost:8080"
-	@echo "phpMyAdmin: http://localhost:8081"
+	@echo "WordPress: http://localhost:8082"
+	@echo "phpMyAdmin: http://localhost:8083"
+	@echo "MailCatcher: http://localhost:1082"
+	@echo "Redis: localhost:6380"
+	@echo "MySQL: localhost:3307"
 
 docker-stop: ## Stop Docker development environment
 	@echo "$(YELLOW)Stopping Docker development environment...$(NC)"
@@ -320,8 +323,7 @@ gh-release: ## Create GitHub release for current version
 	@gh release create "v$(PLUGIN_VERSION)" \
 		"$(DIST_DIR)/$(PLUGIN_NAME)-$(PLUGIN_VERSION).zip" \
 		--title "Release v$(PLUGIN_VERSION)" \
-		--notes "Release v$(PLUGIN_VERSION)\n\nSee CHANGELOG.md for details." \
-		--latest
+		--notes "Release v$(PLUGIN_VERSION) - GitHub CLI Integration and Enhanced Development Workflow\n\n### Major Features Added:\n- Complete GitHub CLI integration with 8 new Makefile commands\n- Automated release process with make gh-release command\n- Token-based command-line authentication\n- Professional development workflow with comprehensive tooling\n\nSee CHANGELOG.md for complete details."
 	@echo "$(GREEN)✓ Release v$(PLUGIN_VERSION) created successfully$(NC)"
 
 gh-pr: ## Create pull request for current branch
@@ -351,6 +353,42 @@ gh-issues: ## List GitHub issues
 	@echo "$(BLUE)GitHub Issues$(NC)"
 	@echo "=============="
 	@gh issue list --limit 10 || echo "No issues found"
+
+##@ WP-CLI
+
+wp-cli: ## Access WP-CLI in WordPress container
+	@$(MAKE) _require-docker
+	@echo "$(BLUE)Starting WP-CLI session in WordPress container...$(NC)"
+	@echo "Use 'exit' to return to host shell"
+	@cd plugin && sudo docker-compose exec wordpress bash
+
+wp-info: ## Show WordPress information via WP-CLI
+	@$(MAKE) _require-docker
+	@echo "$(BLUE)WordPress Information$(NC)"
+	@echo "===================="
+	@cd plugin && sudo docker-compose exec -T wordpress php -r "\$$wp_cli = '/usr/local/bin/wp'; if (file_exists(\$$wp_cli)) { system('php ' . \$$wp_cli . ' --info --allow-root --path=/var/www/html'); } else { echo 'WP-CLI not found'; }"
+
+wp-status: ## Show WordPress status
+	@$(MAKE) _require-docker
+	@echo "$(BLUE)WordPress Status$(NC)"
+	@echo "================="
+	@cd plugin && sudo docker-compose exec -T wordpress php -r "\$$wp_cli = '/usr/local/bin/wp'; if (file_exists(\$$wp_cli)) { system('php ' . \$$wp_cli . ' core version --allow-root --path=/var/www/html'); } else { echo 'WP-CLI not found'; }"
+
+wp-plugins: ## List WordPress plugins
+	@$(MAKE) _require-docker
+	@echo "$(BLUE)WordPress Plugins$(NC)"
+	@echo "=================="
+	@cd plugin && sudo docker-compose exec -T wordpress php -r "\$$wp_cli = '/usr/local/bin/wp'; if (file_exists(\$$wp_cli)) { system('php ' . \$$wp_cli . ' plugin list --allow-root --path=/var/www/html'); } else { echo 'WP-CLI not found'; }"
+
+wp-activate: ## Activate the Kob Git Updater plugin
+	@$(MAKE) _require-docker
+	@echo "$(BLUE)Activating Kob Git Updater plugin...$(NC)"
+	@cd plugin && sudo docker-compose exec -T wordpress php -r "\$$wp_cli = '/usr/local/bin/wp'; if (file_exists(\$$wp_cli)) { system('php ' . \$$wp_cli . ' plugin activate kob-git-updater --allow-root --path=/var/www/html'); } else { echo 'WP-CLI not found'; }"
+
+wp-deactivate: ## Deactivate the Kob Git Updater plugin
+	@$(MAKE) _require-docker
+	@echo "$(BLUE)Deactivating Kob Git Updater plugin...$(NC)"
+	@cd plugin && sudo docker-compose exec -T wordpress php -r "\$$wp_cli = '/usr/local/bin/wp'; if (file_exists(\$$wp_cli)) { system('php ' . \$$wp_cli . ' plugin deactivate kob-git-updater --allow-root --path=/var/www/html'); } else { echo 'WP-CLI not found'; }"
 
 # Utility targets
 .PHONY: _require-composer _require-git _require-docker _require-gh

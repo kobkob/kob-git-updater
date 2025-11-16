@@ -1,7 +1,7 @@
 # Dockerfile for Kob Git Updater WordPress Plugin Development
 FROM wordpress:6.4-php8.1-apache
 
-# Install system dependencies
+# Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
     # Development tools
     git \
@@ -9,20 +9,25 @@ RUN apt-get update && apt-get install -y \
     curl \
     wget \
     unzip \
-    # PHP extensions and tools
-    php-xdebug \
-    php-zip \
-    php-mbstring \
-    php-xml \
-    php-curl \
     # Database tools
     default-mysql-client \
     # Build tools
     make \
     # File watching tools
     inotify-tools \
+    # PHP development dependencies
+    libzip-dev \
+    libxml2-dev \
+    libcurl4-openssl-dev \
     # Cleanup
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # Install PHP extensions using docker-php-ext-install (WordPress image method)
+    && docker-php-ext-install zip \
+    && docker-php-ext-install curl \
+    && docker-php-ext-install xml \
+    # Install Xdebug via PECL
+    && pecl install xdebug \
+    && docker-php-ext-enable xdebug
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -61,8 +66,7 @@ RUN if [ -f composer.json ]; then \
         composer install --no-interaction --optimize-autoloader; \
     fi
 
-# Create symlink to WordPress plugins directory
-RUN ln -sf /opt/plugin-dev /var/www/html/wp-content/plugins/kob-git-updater
+# Plugin will be mounted via docker-compose volume
 
 # Create development script
 RUN cat > /usr/local/bin/dev-setup.sh << 'EOF' && chmod +x /usr/local/bin/dev-setup.sh
@@ -98,23 +102,35 @@ RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp
 
-# Create entrypoint script
-RUN cat > /usr/local/bin/docker-entrypoint-dev.sh << 'EOF' && chmod +x /usr/local/bin/docker-entrypoint-dev.sh
+# Create a startup script that will run after WordPress is initialized
+RUN cat > /usr/local/bin/plugin-setup.sh << 'EOF' && chmod +x /usr/local/bin/plugin-setup.sh
 #!/bin/bash
-set -e
+# This script runs after WordPress is ready
+echo "Setting up Kob Git Updater plugin..."
 
-# Run the original WordPress entrypoint
-exec docker-entrypoint.sh "$@" &
-WORDPRESS_PID=$!
+# Wait for WordPress to be ready
+until wp core is-installed --path=/var/www/html --allow-root 2>/dev/null; do
+    echo "Waiting for WordPress to be ready..."
+    sleep 5
+done
 
-# Wait a bit for WordPress to start
-sleep 10
+# Activate the plugin
+wp plugin activate kob-git-updater --path=/var/www/html --allow-root || echo "Plugin activation will be done manually"
 
-# Run development setup in background
-/usr/local/bin/dev-setup.sh &
+# Set development constants
+wp config set WP_DEBUG true --raw --path=/var/www/html --allow-root 2>/dev/null || true
+wp config set WP_DEBUG_LOG true --raw --path=/var/www/html --allow-root 2>/dev/null || true
+wp config set WP_DEBUG_DISPLAY false --raw --path=/var/www/html --allow-root 2>/dev/null || true
+wp config set SCRIPT_DEBUG true --raw --path=/var/www/html --allow-root 2>/dev/null || true
 
-# Wait for WordPress process
-wait $WORDPRESS_PID
+echo "Plugin setup completed!"
+EOF
+
+# Create a simple init script that runs our plugin setup in background
+RUN cat > /docker-entrypoint-init.d/plugin-setup.sh << 'EOF' && chmod +x /docker-entrypoint-init.d/plugin-setup.sh
+#!/bin/bash
+# Run plugin setup in background after WordPress starts
+(/usr/local/bin/plugin-setup.sh) &
 EOF
 
 # Expose port 80 for Apache
@@ -123,8 +139,7 @@ EXPOSE 80
 # Add labels for documentation
 LABEL maintainer="Kobkob LLC <filipo@kobkob.org>"
 LABEL description="WordPress development environment for Kob Git Updater plugin"
-LABEL version="1.3.0"
+LABEL version="1.3.1"
 
-# Use custom entrypoint
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint-dev.sh"]
-CMD ["apache2-foreground"]
+# Use the original WordPress entrypoint
+# CMD ["apache2-foreground"] - this will be handled by the WordPress base image

@@ -4,10 +4,9 @@ declare(strict_types=1);
 namespace KobGitUpdater\Core;
 
 use KobGitUpdater\Core\Interfaces\PluginInterface;
-use KobGitUpdater\Admin\MenuManager;
-use KobGitUpdater\GitHub\ApiClient;
+use KobGitUpdater\Admin\SettingsPage;
+use KobGitUpdater\GitHub\GitHubApiClient;
 use KobGitUpdater\Repository\RepositoryManager;
-use KobGitUpdater\Installer\UpdateChecker;
 use KobGitUpdater\Utils\Logger;
 
 /**
@@ -41,9 +40,6 @@ class Plugin implements PluginInterface
         if (is_admin()) {
             $this->initAdmin();
         }
-        
-        // Initialize update system
-        $this->initUpdateSystem();
     }
 
     /**
@@ -93,7 +89,7 @@ class Plugin implements PluginInterface
 
         // GitHub API Client
         $this->container->register('github.client', function ($container) {
-            return new ApiClient(
+            return new GitHubApiClient(
                 $container->get('logger'),
                 $this->getOptions()['token'] ?? ''
             );
@@ -102,26 +98,18 @@ class Plugin implements PluginInterface
         // Repository Manager
         $this->container->register('repository.manager', function ($container) {
             return new RepositoryManager(
-                $this,
-                $container->get('logger')
-            );
-        });
-
-        // Update Checker
-        $this->container->register('update.checker', function ($container) {
-            return new UpdateChecker(
                 $container->get('github.client'),
-                $container->get('repository.manager'),
                 $container->get('logger')
             );
         });
 
-        // Menu Manager (Admin)
+        // Settings Page (Admin)
         if (is_admin()) {
-            $this->container->register('admin.menu', function ($container) {
-                return new MenuManager(
-                    $this,
-                    $container->get('repository.manager')
+            $this->container->register('admin.settings', function ($container) {
+                return new SettingsPage(
+                    $container->get('github.client'),
+                    $container->get('repository.manager'),
+                    $container->get('logger')
                 );
             });
         }
@@ -143,19 +131,9 @@ class Plugin implements PluginInterface
      */
     private function initAdmin(): void
     {
-        /** @var MenuManager $menuManager */
-        $menuManager = $this->container->get('admin.menu');
-        $menuManager->init();
-    }
-
-    /**
-     * Initialize update system
-     */
-    private function initUpdateSystem(): void
-    {
-        /** @var UpdateChecker $updateChecker */
-        $updateChecker = $this->container->get('update.checker');
-        $updateChecker->init();
+        /** @var SettingsPage $settingsPage */
+        $settingsPage = $this->container->get('admin.settings');
+        $settingsPage->init();
     }
 
     /**
@@ -163,6 +141,9 @@ class Plugin implements PluginInterface
      */
     public function onActivation(): void
     {
+        // Ensure services are registered for activation hooks
+        $this->registerServices();
+        
         // Set default options if they don't exist
         if (false === get_option(self::OPTION_KEY)) {
             add_option(self::OPTION_KEY, [
@@ -187,6 +168,11 @@ class Plugin implements PluginInterface
      */
     public function onDeactivation(): void
     {
+        // Ensure services are registered for deactivation hooks
+        if (!$this->container->has('logger')) {
+            $this->registerServices();
+        }
+        
         // Clear plugin transients
         global $wpdb;
         $wpdb->query(

@@ -3,7 +3,7 @@
 namespace KobGitUpdater\Admin;
 
 use KobGitUpdater\Core\Interfaces\GitHubApiClientInterface;
-use KobGitUpdater\Core\Interfaces\RepositoryInterface;
+use KobGitUpdater\Repository\RepositoryManager;
 use KobGitUpdater\Utils\Logger;
 
 /**
@@ -17,7 +17,7 @@ class SettingsPage
     /** @var GitHubApiClientInterface */
     private $github_client;
 
-    /** @var RepositoryInterface */
+    /** @var RepositoryManager */
     private $repository_manager;
 
     /** @var Logger */
@@ -34,7 +34,7 @@ class SettingsPage
 
     public function __construct(
         GitHubApiClientInterface $github_client,
-        RepositoryInterface $repository_manager,
+        RepositoryManager $repository_manager,
         Logger $logger
     ) {
         $this->github_client = $github_client;

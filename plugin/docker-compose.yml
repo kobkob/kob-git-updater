@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL Database
   db:
@@ -14,7 +12,7 @@ services:
       - db_data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "3306:3306"
+      - "3307:3306"
     command: '--default-authentication-plugin=mysql_native_password'
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "wordpress", "-pwordpress"]
@@ -23,35 +21,35 @@ services:
 
   # WordPress with Plugin Development Environment
   wordpress:
-    build: 
-      context: .
+    build:
+      context: ./docker/wordpress
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8082:80"
     environment:
       WORDPRESS_DB_HOST: db:3306
       WORDPRESS_DB_USER: wordpress
       WORDPRESS_DB_PASSWORD: wordpress
       WORDPRESS_DB_NAME: wordpress
       WORDPRESS_TABLE_PREFIX: wp_
-      WORDPRESS_DEBUG: 1
       WORDPRESS_CONFIG_EXTRA: |
-        define('WP_DEBUG', true);
-        define('WP_DEBUG_LOG', true);
-        define('WP_DEBUG_DISPLAY', false);
-        define('SCRIPT_DEBUG', true);
-        define('WP_ENVIRONMENT_TYPE', 'development');
+        if (!defined('WP_DEBUG')) define('WP_DEBUG', true);
+        if (!defined('WP_DEBUG_LOG')) define('WP_DEBUG_LOG', true);
+        if (!defined('WP_DEBUG_DISPLAY')) define('WP_DEBUG_DISPLAY', false);
+        if (!defined('SCRIPT_DEBUG')) define('SCRIPT_DEBUG', true);
+        if (!defined('WP_ENVIRONMENT_TYPE')) define('WP_ENVIRONMENT_TYPE', 'development');
     volumes:
-      # Plugin development volume (live reload)
-      - .:/opt/plugin-dev
-      - .:/var/www/html/wp-content/plugins/kob-git-updater
       # WordPress data persistence
       - wp_data:/var/www/html
+      # Plugin files only (selective mounting to avoid conflicts)
+      - ./src:/var/www/html/wp-content/plugins/kob-git-updater/src:ro
+      - ./vendor:/var/www/html/wp-content/plugins/kob-git-updater/vendor:ro
+      - ./assets:/var/www/html/wp-content/plugins/kob-git-updater/assets:ro
+      - ./kob-git-updater-new.php:/var/www/html/wp-content/plugins/kob-git-updater/kob-git-updater.php:ro
+      - ./composer.json:/var/www/html/wp-content/plugins/kob-git-updater/composer.json:ro
       # Logs
       - ./docker/logs/wordpress:/var/log
-      # Custom WordPress configuration
-      - ./docker/wordpress/wp-config-custom.php:/var/www/html/wp-config-custom.php
     depends_on:
       db:
         condition: service_healthy
@@ -65,7 +63,7 @@ services:
     image: phpmyadmin/phpmyadmin:latest
     restart: unless-stopped
     ports:
-      - "8081:80"
+      - "8083:80"
     environment:
       PMA_HOST: db
       PMA_USER: wordpress
@@ -80,15 +78,15 @@ services:
     image: sj26/mailcatcher:latest
     restart: unless-stopped
     ports:
-      - "1080:1080"  # Web interface
-      - "1025:1025"  # SMTP server
+      - "1082:1080"  # Web interface
+      - "1026:1025"  # SMTP server
 
   # Redis for caching (optional)
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes

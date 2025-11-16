@@ -54,7 +54,7 @@ class GitHubApiClient implements GitHubApiClientInterface
         $response = $this->make_cached_request($url);
 
         if (is_wp_error($response)) {
-            $this->logger->log_error("Failed to get latest release for {$owner}/{$repo}: " . $response->get_error_message());
+            $this->logger->error("Failed to get latest release for {$owner}/{$repo}: " . $response->get_error_message());
             return null;
         }
 
@@ -70,7 +70,7 @@ class GitHubApiClient implements GitHubApiClientInterface
         $response = $this->make_cached_request($url);
 
         if (is_wp_error($response)) {
-            $this->logger->log_error("Failed to get repository info for {$owner}/{$repo}: " . $response->get_error_message());
+            $this->logger->error("Failed to get repository info for {$owner}/{$repo}: " . $response->get_error_message());
             return null;
         }
 
@@ -94,7 +94,7 @@ class GitHubApiClient implements GitHubApiClientInterface
         $response = $this->make_request($url); // Don't cache rate limit info
 
         if (is_wp_error($response)) {
-            $this->logger->log_error("Failed to get rate limit info: " . $response->get_error_message());
+            $this->logger->error("Failed to get rate limit info: " . $response->get_error_message());
             return null;
         }
 
@@ -117,9 +117,33 @@ class GitHubApiClient implements GitHubApiClientInterface
         $remaining = $core['remaining'] ?? 0;
         $limit = $core['limit'] ?? 0;
         
-        $this->logger->log_info("GitHub API rate limit: {$remaining}/{$limit} remaining");
+        $this->logger->info("GitHub API rate limit: {$remaining}/{$limit} remaining");
         
         return true;
+    }
+
+    /**
+     * Interface method: Get latest release (camelCase wrapper)
+     */
+    public function getLatestRelease(string $owner, string $repo)
+    {
+        return $this->get_latest_release($owner, $repo);
+    }
+
+    /**
+     * Interface method: Get repository info (camelCase wrapper)
+     */
+    public function getRepository(string $owner, string $repo)
+    {
+        return $this->get_repository_info($owner, $repo);
+    }
+
+    /**
+     * Interface method: Get download URL (camelCase wrapper)
+     */
+    public function getDownloadUrl(string $owner, string $repo, string $ref)
+    {
+        return $this->get_download_url($owner, $repo, $ref);
     }
 
     /**
@@ -131,7 +155,7 @@ class GitHubApiClient implements GitHubApiClientInterface
         $cached_response = get_transient($cache_key);
 
         if ($cached_response !== false) {
-            $this->logger->log_info("Using cached response for: {$url}");
+            $this->logger->info("Using cached response for: {$url}");
             return $cached_response;
         }
 
@@ -139,7 +163,7 @@ class GitHubApiClient implements GitHubApiClientInterface
 
         if (!is_wp_error($response)) {
             set_transient($cache_key, $response, self::CACHE_EXPIRATION);
-            $this->logger->log_info("Cached API response for: {$url}");
+            $this->logger->info("Cached API response for: {$url}");
         }
 
         return $response;
@@ -163,7 +187,7 @@ class GitHubApiClient implements GitHubApiClientInterface
             $args['headers']['Authorization'] = 'token ' . $this->github_token;
         }
 
-        $this->logger->log_info("Making GitHub API request to: {$url}");
+        $this->logger->info("Making GitHub API request to: {$url}");
         $response = wp_remote_get($url, $args);
 
         if (is_wp_error($response)) {
@@ -264,11 +288,11 @@ class GitHubApiClient implements GitHubApiClientInterface
 
         if ($limit && $remaining) {
             $reset_time = $reset ? date('H:i:s', intval($reset)) : 'unknown';
-            $this->logger->log_info("Rate limit: {$remaining}/{$limit} remaining, resets at {$reset_time}");
+            $this->logger->info("Rate limit: {$remaining}/{$limit} remaining, resets at {$reset_time}");
             
             // Warn if getting close to rate limit
             if (intval($remaining) < 100) {
-                $this->logger->log_error("GitHub API rate limit is low: {$remaining}/{$limit} remaining");
+                $this->logger->warning("GitHub API rate limit is low: {$remaining}/{$limit} remaining");
             }
         }
     }
@@ -289,13 +313,13 @@ class GitHubApiClient implements GitHubApiClientInterface
                     $pattern
                 )
             );
-            $this->logger->log_info("Cleared API cache for {$owner}/{$repo}");
+            $this->logger->info("Cleared API cache for {$owner}/{$repo}");
         } else {
             // Clear all API cache
             $wpdb->query(
                 "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_giu_api_%' OR option_name LIKE '_transient_timeout_giu_api_%'"
             );
-            $this->logger->log_info("Cleared all GitHub API cache");
+            $this->logger->info("Cleared all GitHub API cache");
         }
     }
 }

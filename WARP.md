@@ -444,9 +444,11 @@ make docker-dev       # Start services
 ```
 
 Access points:
-- WordPress: http://localhost:8000
-- phpMyAdmin: http://localhost:8080
-- MailCatcher: http://localhost:1080
+- WordPress: http://localhost:8082
+- phpMyAdmin: http://localhost:8083
+- MailCatcher: http://localhost:1082
+- Redis: localhost:6380
+- MySQL: localhost:3307
 
 ## Version Management
 
