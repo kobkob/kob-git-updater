@@ -43,6 +43,12 @@ class GitHubApiClient implements GitHubApiClientInterface
     public function set_token(?string $token): void
     {
         $this->github_token = $token;
+        if (!empty($token)) {
+            $masked_token = substr($token, 0, 6) . '...' . substr($token, -4);
+            $this->logger->info("GitHub token updated: {$masked_token}");
+        } else {
+            $this->logger->info("GitHub token cleared");
+        }
     }
 
     /**
@@ -185,6 +191,10 @@ class GitHubApiClient implements GitHubApiClientInterface
         // Add authentication if token is available
         if (!empty($this->github_token)) {
             $args['headers']['Authorization'] = 'token ' . $this->github_token;
+            $masked_token = substr($this->github_token, 0, 6) . '...' . substr($this->github_token, -4);
+            $this->logger->info("Using authentication token: {$masked_token}");
+        } else {
+            $this->logger->info("No authentication token available");
         }
 
         $this->logger->info("Making GitHub API request to: {$url}");

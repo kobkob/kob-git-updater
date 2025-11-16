@@ -89,9 +89,12 @@ class Plugin implements PluginInterface
 
         // GitHub API Client
         $this->container->register('github.client', function ($container) {
+            // Prefer token from dedicated option if present, fallback to legacy options array
+            $saved_token = get_option('giu_github_token', '');
+            $token = !empty($saved_token) ? $saved_token : ($this->getOptions()['token'] ?? '');
             return new GitHubApiClient(
                 $container->get('logger'),
-                $this->getOptions()['token'] ?? ''
+                $token
             );
         });
 

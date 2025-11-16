@@ -467,6 +467,10 @@ class SettingsPage
             exit;
         }
 
+        // Ensure GitHub client has the latest token before verification
+        $token = get_option(self::GITHUB_TOKEN_OPTION, '');
+        $this->github_client->set_token($token);
+
         $success = $this->repository_manager->add($owner, $repo, $type, $slug);
 
         if ($success) {
