@@ -559,12 +559,249 @@ class SettingsPage
      */
     public function render_documentation_page(): void
     {
-        // Include the existing documentation rendering logic
-        // This would be moved from the original plugin file
-        echo '<div class="wrap">';
-        echo '<h1>Git Updater Documentation</h1>';
-        echo '<p>Documentation content would go here...</p>';
-        echo '</div>';
+        ?>
+        <div class="wrap" style="--primary-color: #00B5A3; --primary-dark: #008B7A;">
+            <script>
+                tailwind.config = {
+                    theme: {
+                        extend: {
+                            colors: {
+                                'primary': 'var(--primary-color)',
+                                'primary-dark': 'var(--primary-dark)',
+                            }
+                        }
+                    }
+                }
+            </script>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 m-6">
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <div class="flex items-center space-x-4">
+                        <img src="<?php echo esc_url(plugins_url('assets/img/logo_en.jpg', dirname(__DIR__, 2))); ?>" 
+                             alt="Git Updater" class="h-12 w-auto">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900 m-0">Git Updater Documentation</h1>
+                            <p class="text-gray-600 text-sm mt-1">Complete guide for managing GitHub-based plugin and theme updates</p>
+                        </div>
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        Version <?php echo esc_html(defined('KGU_VERSION') ? KGU_VERSION : '1.3.1'); ?>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-8">
+                    <!-- Quick Start -->
+                    <section>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                            <span class="dashicons dashicons-admin-tools text-primary mr-2"></span>
+                            Quick Start Guide
+                        </h2>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <h3 class="font-medium text-blue-900 mb-2">1. Setup GitHub Token</h3>
+                            <p class="text-blue-700 text-sm mb-2">Create a Personal Access Token at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" class="underline">GitHub Settings</a></p>
+                            <p class="text-blue-700 text-sm">Required permissions: <code>Contents: Read</code> for public repositories, <code>Contents: Read</code> + <code>Metadata: Read</code> for private repositories.</p>
+                        </div>
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                            <h3 class="font-medium text-green-900 mb-2">2. Add Repository</h3>
+                            <p class="text-green-700 text-sm mb-2">Use the Configuration tab to add your GitHub repositories.</p>
+                            <p class="text-green-700 text-sm">Format: <code>owner/repository</code> (e.g., <code>kobkob/my-plugin</code>)</p>
+                        </div>
+                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <h3 class="font-medium text-purple-900 mb-2">3. Automatic Updates</h3>
+                            <p class="text-purple-700 text-sm">Updates will appear in WordPress Admin → Updates alongside core WordPress updates.</p>
+                        </div>
+                    </section>
+
+                    <!-- Repository Management -->
+                    <section>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                            <span class="dashicons dashicons-portfolio text-primary mr-2"></span>
+                            Repository Management
+                        </h2>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <h3 class="font-medium text-gray-900 mb-2">Adding Repositories</h3>
+                                <ul class="text-sm text-gray-600 space-y-1">
+                                    <li>• <strong>Owner:</strong> GitHub username or organization</li>
+                                    <li>• <strong>Repository:</strong> Repository name</li>
+                                    <li>• <strong>Type:</strong> Plugin or Theme</li>
+                                    <li>• <strong>Slug:</strong> WordPress directory name</li>
+                                </ul>
+                            </div>
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <h3 class="font-medium text-gray-900 mb-2">Update Detection</h3>
+                                <ul class="text-sm text-gray-600 space-y-1">
+                                    <li>• Checks for GitHub releases (tags)</li>
+                                    <li>• Falls back to latest commit</li>
+                                    <li>• Respects semantic versioning</li>
+                                    <li>• Caches API responses (1 hour)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- GitHub Integration -->
+                    <section>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                            <span class="dashicons dashicons-admin-links text-primary mr-2"></span>
+                            GitHub Integration
+                        </h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Feature</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Public Repos</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Private Repos</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rate Limit</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <tr>
+                                        <td class="px-4 py-2 text-sm text-gray-900">No Token</td>
+                                        <td class="px-4 py-2 text-sm text-green-600">✓ Supported</td>
+                                        <td class="px-4 py-2 text-sm text-red-600">✗ Not Available</td>
+                                        <td class="px-4 py-2 text-sm text-yellow-600">60/hour</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-2 text-sm text-gray-900">With Token</td>
+                                        <td class="px-4 py-2 text-sm text-green-600">✓ Supported</td>
+                                        <td class="px-4 py-2 text-sm text-green-600">✓ Supported</td>
+                                        <td class="px-4 py-2 text-sm text-green-600">5,000/hour</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Troubleshooting -->
+                    <section>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                            <span class="dashicons dashicons-sos text-primary mr-2"></span>
+                            Troubleshooting
+                        </h2>
+                        <div class="space-y-4">
+                            <details class="border border-gray-200 rounded-lg">
+                                <summary class="px-4 py-2 font-medium text-gray-900 cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                    Updates not showing up
+                                </summary>
+                                <div class="px-4 py-3 text-sm text-gray-600 space-y-2">
+                                    <p>1. Check that your repository has proper version tags (e.g., v1.0.0)</p>
+                                    <p>2. Verify the plugin/theme slug matches your WordPress directory</p>
+                                    <p>3. Use the "Test Connection" button to verify GitHub access</p>
+                                    <p>4. Clear caches using the "Clear Cache" button</p>
+                                </div>
+                            </details>
+                            <details class="border border-gray-200 rounded-lg">
+                                <summary class="px-4 py-2 font-medium text-gray-900 cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                    Rate limit exceeded
+                                </summary>
+                                <div class="px-4 py-3 text-sm text-gray-600 space-y-2">
+                                    <p>1. Add a GitHub Personal Access Token to increase limit to 5,000/hour</p>
+                                    <p>2. Wait for the rate limit to reset (shown in connection test)</p>
+                                    <p>3. Reduce the number of repositories if necessary</p>
+                                </div>
+                            </details>
+                            <details class="border border-gray-200 rounded-lg">
+                                <summary class="px-4 py-2 font-medium text-gray-900 cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                    Private repository access denied
+                                </summary>
+                                <div class="px-4 py-3 text-sm text-gray-600 space-y-2">
+                                    <p>1. Ensure your Personal Access Token has <code>Contents: Read</code> permission</p>
+                                    <p>2. Verify the token belongs to a user with repository access</p>
+                                    <p>3. Check if the repository name and owner are correct</p>
+                                    <p>4. For organization repos, ensure proper access rights</p>
+                                </div>
+                            </details>
+                        </div>
+                    </section>
+
+                    <!-- Developer Information -->
+                    <section>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                            <span class="dashicons dashicons-editor-code text-primary mr-2"></span>
+                            Developer Information
+                        </h2>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <h3 class="font-medium text-gray-900 mb-2">Plugin Structure</h3>
+                                <pre class="text-xs text-gray-600 bg-gray-50 p-2 rounded overflow-x-auto">your-plugin/
+├── your-plugin.php     # Main file
+├── composer.json       # Dependencies
+├── src/               # Source code
+└── README.md          # Documentation</pre>
+                            </div>
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <h3 class="font-medium text-gray-900 mb-2">Required Headers</h3>
+                                <pre class="text-xs text-gray-600 bg-gray-50 p-2 rounded overflow-x-auto"><?php echo esc_html('<?php
+/*
+Plugin Name: Your Plugin
+Version: 1.0.0
+Description: Plugin description
+*/'); ?></pre>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h3 class="font-medium text-yellow-900 mb-2">GitHub Release Best Practices</h3>
+                            <ul class="text-sm text-yellow-700 space-y-1">
+                                <li>• Use semantic versioning (v1.0.0, v1.1.0, v2.0.0)</li>
+                                <li>• Include release notes in GitHub release descriptions</li>
+                                <li>• Tag releases from stable commits</li>
+                                <li>• Update version number in plugin/theme headers</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Support -->
+                    <section>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                            <span class="dashicons dashicons-heart text-primary mr-2"></span>
+                            Support & Resources
+                        </h2>
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <a href="https://github.com/kobkob/kob-git-updater" target="_blank" 
+                               class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <span class="dashicons dashicons-external text-primary mr-3"></span>
+                                <div>
+                                    <div class="font-medium text-gray-900">GitHub Repository</div>
+                                    <div class="text-sm text-gray-600">Source code & issues</div>
+                                </div>
+                            </a>
+                            <a href="https://kobkob.org/support" target="_blank" 
+                               class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <span class="dashicons dashicons-admin-users text-primary mr-3"></span>
+                                <div>
+                                    <div class="font-medium text-gray-900">Support Center</div>
+                                    <div class="text-sm text-gray-600">Get help & documentation</div>
+                                </div>
+                            </a>
+                            <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" 
+                               class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <span class="dashicons dashicons-admin-network text-primary mr-3"></span>
+                                <div>
+                                    <div class="font-medium text-gray-900">Create Token</div>
+                                    <div class="text-sm text-gray-600">GitHub Personal Access Token</div>
+                                </div>
+                            </a>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Footer -->
+                <div class="border-t border-gray-200 px-6 py-4 bg-gray-50">
+                    <div class="flex items-center justify-between text-sm text-gray-600">
+                        <div>
+                            Plugin by <a href="https://kobkob.org" target="_blank" class="text-primary hover:underline">Kobkob LLC</a>
+                        </div>
+                        <div>
+                            Version <?php echo esc_html(defined('KGU_VERSION') ? KGU_VERSION : '1.3.1'); ?> • 
+                            <a href="https://github.com/kobkob/kob-git-updater/releases" target="_blank" class="text-primary hover:underline">Release Notes</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
     }
 
     /**
