@@ -64,8 +64,8 @@ class SettingsPage
     {
         // Main menu page
         add_menu_page(
-            'Git Updater',
-            'Git Updater',
+            'Kob Git Updater',
+            'Kob Git Updater',
             'manage_options',
             self::PAGE_SLUG,
             [$this, 'render_settings_page'],
@@ -190,10 +190,10 @@ class SettingsPage
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 m-6">
                 <div class="flex items-center justify-between p-6 border-b border-gray-200">
                     <div class="flex items-center space-x-4">
-                        <img src="<?php echo esc_url(plugins_url('assets/img/logo_en.jpg', dirname(__DIR__, 2))); ?>" 
-                             alt="Git Updater" class="h-12 w-auto">
+                        <img src="/wp-content/plugins/kob-git-updater/assets/img/logo_en.jpg" 
+                             alt="Kob Git Updater" class="h-12 w-auto">
                         <div>
-                            <h1 class="text-2xl font-bold text-gray-900 m-0">Git Updater Configuration</h1>
+                            <h1 class="text-2xl font-bold text-gray-900 m-0">Kob Git Updater Configuration</h1>
                             <p class="text-gray-600 text-sm mt-1">Manage GitHub repositories for automatic updates</p>
                         </div>
                     </div>
@@ -577,10 +577,10 @@ class SettingsPage
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 m-6">
                 <div class="flex items-center justify-between p-6 border-b border-gray-200">
                     <div class="flex items-center space-x-4">
-                        <img src="<?php echo esc_url(plugins_url('assets/img/logo_en.jpg', dirname(__DIR__, 2))); ?>" 
-                             alt="Git Updater" class="h-12 w-auto">
+                        <img src="/wp-content/plugins/kob-git-updater/assets/img/logo_en.jpg" 
+                             alt="Kob Git Updater" class="h-12 w-auto">
                         <div>
-                            <h1 class="text-2xl font-bold text-gray-900 m-0">Git Updater Documentation</h1>
+                            <h1 class="text-2xl font-bold text-gray-900 m-0">Kob Git Updater Documentation</h1>
                             <p class="text-gray-600 text-sm mt-1">Complete guide for managing GitHub-based plugin and theme updates</p>
                         </div>
                     </div>

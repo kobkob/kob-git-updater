@@ -1,5 +1,5 @@
 /**
- * Git Updater Admin JavaScript
+ * Kob Git Updater Admin JavaScript
  * 
  * Handles UI interactions and AJAX requests for the admin interface.
  */
