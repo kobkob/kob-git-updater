@@ -173,6 +173,33 @@ docker-shell: ## Access WordPress container shell
 docker-mysql: ## Access MySQL container shell
 	cd $(PLUGIN_DIR) && docker-compose exec db mysql -u wordpress -p
 
+##@ Permission Management
+
+fix-permissions: ## Fix file ownership and permissions for development
+	@echo "$(BLUE)Fixing file permissions...$(NC)"
+	@if [ -x "$(PLUGIN_DIR)/scripts/fix-permissions.sh" ]; then \
+		cd $(PLUGIN_DIR) && bash scripts/fix-permissions.sh; \
+	else \
+		echo "$(YELLOW)Permission script not found, using manual fix...$(NC)"; \
+		sudo chown -R $$(id -u):$$(id -g) $(PLUGIN_DIR)/src $(PLUGIN_DIR)/assets $(PLUGIN_DIR)/vendor $(PLUGIN_DIR)/*.php $(PLUGIN_DIR)/tests 2>/dev/null || true; \
+		chmod -R 755 $(PLUGIN_DIR) 2>/dev/null || true; \
+		find $(PLUGIN_DIR) -name "*.php" -exec chmod 644 {} + 2>/dev/null || true; \
+	fi
+	@echo "$(GREEN)✓ Permissions fixed$(NC)"
+
+fix-docker-permissions: ## Rebuild Docker containers with proper user mapping
+	@echo "$(BLUE)Rebuilding Docker containers with user mapping...$(NC)"
+	@if [ -x "$(PLUGIN_DIR)/scripts/fix-permissions.sh" ]; then \
+		cd $(PLUGIN_DIR) && bash scripts/fix-permissions.sh restart; \
+	else \
+		echo "$(YELLOW)Using manual Docker rebuild...$(NC)"; \
+		cd $(PLUGIN_DIR) && export HOST_UID=$$(id -u) && export HOST_GID=$$(id -g) && \
+		docker-compose down && \
+		docker-compose build --no-cache wordpress && \
+		docker-compose up -d; \
+	fi
+	@echo "$(GREEN)✓ Docker containers rebuilt with proper permissions$(NC)"
+
 ##@ Release Management
 
 deploy: ## Deploy new version (runs full pipeline)

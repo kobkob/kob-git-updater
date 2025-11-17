@@ -6,7 +6,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 This is a **modular WordPress plugin** that provides GitHub-based installation and automatic updates for WordPress plugins and themes. The plugin has been refactored from a single-file monolith into a modern, object-oriented architecture with comprehensive testing and professional development workflows.
 
-### Current Version: 1.3.0
+### Current Version: 1.3.1
 - **Modular OOP Architecture**: Clean separation of concerns with dependency injection
 - **Comprehensive Testing**: PHPUnit test suite with 38 tests and 90 assertions
 - **Professional Development Environment**: Docker, Makefile, and CI/CD integration
@@ -60,6 +60,8 @@ KobGitUpdater/                     # Repository root (Git repository here)
 │   │   ├── Repository/            # Repository management
 │   │   │   ├── RepositoryManager.php # Install/update logic (415 lines)
 │   │   │   └── Repository.php     # Repository model (316 lines)
+│   │   ├── Installer/             # Installation utilities
+│   │   ├── Updates/               # Update management
 │   │   └── Utils/                 # Utility classes
 │   │       └── Logger.php         # Logging utilities
 │   ├── tests/                     # PHPUnit test suite
@@ -145,10 +147,28 @@ make gh-issues        # List open issues
 make gh-workflows     # Show GitHub Actions workflows
 make gh-runs          # Show recent workflow runs
 
+# WP-CLI Integration
+make wp-cli           # Access WP-CLI in WordPress container
+make wp-info          # Show WordPress information via WP-CLI
+make wp-status        # Show WordPress status
+make wp-plugins       # List WordPress plugins
+make wp-activate      # Activate the Kob Git Updater plugin
+make wp-deactivate    # Deactivate the Kob Git Updater plugin
+
+# Maintenance
+make clean            # Clean build artifacts and caches
+make clean-all        # Clean everything including Docker
+make reset            # Reset environment (clean + install)
+make status           # Show development status
+make info             # Show detailed project information
+make docs             # Generate documentation
+make update           # Update Composer dependencies
+
 # Quality Assurance
-make lint             # Run PHP linting
-make format           # Format code (if formatter configured)
-make analyze          # Static analysis
+make test-lint        # Run PHP CodeSniffer only
+make test-analyze     # Run PHPStan static analysis only
+make test-security    # Run Composer security audit
+make validate         # Validate project structure and configuration
 ```
 
 ### Development Environment Requirements
@@ -450,10 +470,23 @@ Access points:
 - Redis: localhost:6380
 - MySQL: localhost:3307
 
+### WP-CLI Integration
+
+Direct WordPress CLI access in Docker environment:
+
+```bash
+make wp-cli           # Interactive WP-CLI session
+make wp-activate      # Activate plugin
+make wp-deactivate    # Deactivate plugin
+make wp-status        # WordPress version and status
+make wp-plugins       # List all plugins
+make wp-info          # Complete WordPress environment info
+```
+
 ## Version Management
 
 The project follows semantic versioning:
-- **Current Version**: 1.3.0 (modular architecture)
+- **Current Version**: 1.3.1 (modular architecture)
 - **Version Detection**: Automatic from plugin headers and Git tags
 - **Release Process**: Automated via `make deploy`
 - **Changelog**: Maintained in CHANGELOG.md
@@ -469,3 +502,194 @@ The project follows semantic versioning:
 7. **Documentation**: Complete project documentation and contribution guidelines
 
 The plugin maintains backward compatibility while providing a modern, maintainable codebase for future development.
+
+## Recent Bug Fixes and Enhancements (Post v1.3.1)
+
+### WordPress.org Directory Compliance (Nov 2025)
+
+**Goal**: Prepare the plugin for submission to the WordPress.org plugin directory by implementing comprehensive WordPress coding standards compliance.
+
+**Achievements**:
+1. **Fixed 4,979 WordPress Coding Standard Violations**
+   - Auto-fixed through multiple PHPCBF runs
+   - Manually resolved critical interface/method naming issues
+   - Fixed variable naming conventions (snake_case)
+
+2. **Interface and Method Name Compliance**
+   - Updated `GitHubApiClientInterface` and `RepositoryInterface` to use snake_case method names
+   - Fixed implementing classes (`GitHubApiClient`, `Repository`) to match interfaces
+   - Removed legacy camelCase wrapper methods
+
+3. **Security and Sanitization Improvements**
+   - Fixed `$_POST` unslashing before sanitization using `wp_unslash()`
+   - Maintained proper nonce verification and capability checks
+   - Enhanced input validation throughout admin interface
+
+4. **WordPress.org Required Files Created**
+   - ✅ `readme.txt` with all required sections (description, installation, FAQ, changelog)
+   - ✅ `uninstall.php` for proper plugin cleanup during deletion
+   - ✅ Removed external CDN dependencies (replaced Tailwind CSS with local `assets/css/admin.css`)
+   - ✅ Added translation template (`languages/kob-git-updater.pot`)
+   - ✅ Added WordPress coding standards configuration (`phpcs.xml.dist`)
+
+5. **Code Organization**
+   - Removed legacy file (`kob-git-updater-legacy.php`) with 371+ violations
+   - Fixed variable naming: `$settingsPage` → `$settings_page`, `$updateChecker` → `$update_checker`, `$logMessage` → `$log_message`
+   - Maintained all 38 PHPUnit tests passing
+
+**Technical Changes**:
+```php
+// Interface methods now use snake_case
+public function get_latest_release( string $owner, string $repo ): ?array;
+public function get_repository( string $owner, string $repo ): ?array;
+public function get_download_url( string $owner, string $repo, string $ref ): ?string;
+
+// Fixed POST data handling
+$owner = sanitize_text_field(wp_unslash($_POST['owner'] ?? ''));
+$repo = sanitize_text_field(wp_unslash($_POST['repo'] ?? ''));
+```
+
+**Status**: Plugin is now substantially compliant with WordPress.org directory requirements and ready for submission review.
+
+### Fatal Error Fix - Method Name Consistency (Nov 2025)
+
+**Issue**: Fatal error introduced during WordPress coding standards refactoring: `Call to undefined method KobGitUpdater\GitHub\GitHubApiClient::get_repository_info()`
+
+**Root Cause**: During interface compliance work, `get_repository_info()` was renamed to `get_repository()` in the `GitHubApiClient` class, but three method calls in `RepositoryManager.php` were not updated.
+
+**Files Fixed**:
+- **`src/Repository/RepositoryManager.php`** (lines 90, 278, 427)
+  - Changed `$this->github_client->get_repository_info(...)`
+  - To: `$this->github_client->get_repository(...)`
+
+**Verification**:
+- ✅ All 38 PHPUnit tests pass
+- ✅ Plugin builds successfully
+- ✅ WordPress containers restarted with fix deployed
+- ✅ No more fatal errors during update checks
+
+### False Positive Update Detection Fix (Nov 2025)
+
+**Issue**: The plugin was incorrectly showing update notifications for repositories with stable semantic versions (e.g., "0.1.0") but no GitHub releases, forcing unnecessary "updates" to development versions ("dev-main").
+
+**Root Cause**: The branch-based update logic in `RepositoryManager.php` was treating any non-development version as outdated and requiring an update to the branch version.
+
+**Fix Applied**: 
+- **File Modified**: `plugin/src/Repository/RepositoryManager.php` (lines 289-302)
+- **Logic Change**: For repositories without releases, if the current version is a stable semantic version (not starting with 'dev-'), return `null` (no update needed) instead of forcing an update
+- **Validation**: Comprehensive testing confirmed the fix prevents false positives while maintaining legitimate update detection
+
+**Technical Details**:
+```php
+// Before: Forced updates from stable to dev versions
+if ( ! empty( $current_version ) && strpos( $current_version, 'dev-' ) !== 0 ) {
+    // Always returned update info - FALSE POSITIVE
+}
+
+// After: Smart detection prevents false positives
+if ( ! empty( $current_version ) && strpos( $current_version, 'dev-' ) !== 0 ) {
+    // Log and return null - NO FALSE UPDATE
+    $this->logger->info( "Repository has stable version but no releases. Not showing update." );
+    return null;
+}
+```
+
+**Impact**: Eliminates false positive "Update" notifications for themes/plugins with stable versions in repositories that don't use GitHub releases.
+
+**Testing**: All 38 existing tests continue to pass, ensuring no regression in legitimate update detection.
+
+## Common Issues & Troubleshooting
+
+### Update Detection Issues
+
+#### False Positive Updates (Resolved)
+**Symptoms**: WordPress shows "Update" button for themes/plugins that are already up-to-date
+**Cause**: Repository has stable version (e.g., "0.1.0") but no GitHub releases
+**Status**: ✅ **Fixed** in post-v1.3.1 patch (see above)
+**Solution**: The fix is already applied. If you're still seeing this, restart your WordPress container.
+
+#### No Updates Showing
+**Symptoms**: Expected updates don't appear in WordPress admin
+**Debugging Steps**:
+1. Check repository has proper version tags (e.g., v1.0.0, v2.1.0)
+2. Verify GitHub token has correct permissions
+3. Clear plugin cache: `make clear-cache` or admin interface
+4. Check logs for GitHub API errors
+5. Test GitHub connection via admin interface
+
+#### GitHub API Authentication Issues
+**Symptoms**: "Not Found" or "Repository not found or private" errors
+**Solutions**:
+1. **Private Repositories**: Ensure GitHub token has `Contents: Read` permission
+2. **Rate Limits**: Add token to increase limit from 60/hour to 5,000/hour
+3. **Token Validation**: Use "Test Connection" button in admin interface
+4. **Repository Access**: Verify the repository owner/name is correct
+
+### Development Environment Issues
+
+#### Docker Container Issues
+**Symptoms**: Container won't start or shows permission errors
+**Solutions**:
+```bash
+# Reset Docker environment
+make clean-all
+make docker-dev
+
+# Fix permission issues (RECOMMENDED)
+make fix-permissions          # Fix host file ownership
+make fix-docker-permissions   # Rebuild containers with user mapping
+
+# Manual permission fix (alternative)
+sudo chown -R $USER:$USER /path/to/plugin
+
+# Clear PHP OPcache after code changes
+sudo docker-compose restart wordpress
+```
+
+#### File Ownership Issues (Resolved)
+**Symptoms**: Need sudo to edit files after Docker container restarts
+**Root Cause**: Docker containers running as different user ID than host
+**Status**: ✅ **Permanently Fixed**
+**Solution Applied**:
+- WordPress container now maps `www-data` user to host UID/GID (1000:1000)
+- Permission management script: `plugin/scripts/fix-permissions.sh`
+- Makefile integration: `make fix-permissions`, `make fix-docker-permissions`
+- Environment file: `plugin/.env` with `HOST_UID` and `HOST_GID` settings
+- Container startup script only manages WordPress-generated directories
+- Host source files remain owned by development user
+
+#### Test Failures
+**Symptoms**: PHPUnit tests failing after changes
+**Solutions**:
+```bash
+# Run specific test suites
+make test-unit          # Core functionality only
+make test-integration   # WordPress integration
+
+# Check syntax
+php -l src/Path/To/File.php
+
+# Verify all dependencies
+composer install
+```
+
+### Performance & Caching
+
+#### Slow Update Checks
+**Symptoms**: WordPress admin slow when checking for updates
+**Solutions**:
+1. GitHub API responses are cached for 1 hour by default
+2. Use authenticated requests (token) for higher rate limits
+3. Consider reducing number of monitored repositories
+4. Check network connectivity to GitHub API
+
+#### Debug Logging
+**Symptoms**: Need to troubleshoot plugin behavior
+**Enable Logging**:
+```bash
+# Check WordPress debug logs
+tail -f /path/to/wp-content/debug.log
+
+# Or in Docker environment
+sudo docker logs plugin-wordpress-1 --follow
+```

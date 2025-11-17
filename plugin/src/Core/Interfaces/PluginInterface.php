@@ -6,20 +6,20 @@ namespace KobGitUpdater\Core\Interfaces;
 /**
  * Main plugin interface
  */
-interface PluginInterface
-{
-    /**
-     * Initialize the plugin
-     */
-    public function init(): void;
+interface PluginInterface {
 
-    /**
-     * Get plugin version
-     */
-    public function getVersion(): string;
+	/**
+	 * Initialize the plugin
+	 */
+	public function init(): void;
 
-    /**
-     * Get plugin options
-     */
-    public function getOptions(): array;
+	/**
+	 * Get plugin version
+	 */
+	public function getVersion(): string;
+
+	/**
+	 * Get plugin options
+	 */
+	public function getOptions(): array;
 }

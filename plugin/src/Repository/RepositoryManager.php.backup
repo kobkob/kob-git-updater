@@ -87,7 +87,7 @@ class RepositoryManager {
 		}
 
 		// Verify repository exists on GitHub
-		$repo_info = $this->github_client->get_repository( $owner, $repo );
+		$repo_info = $this->github_client->get_repository_info( $owner, $repo );
 		if ( $repo_info === null ) {
 			$this->logger->error( "Failed to verify repository {$key} on GitHub" );
 			return false;
@@ -275,7 +275,7 @@ class RepositoryManager {
 		$this->logger->info( "No releases found for {$repository->get_key()}, checking branch-based update logic" );
 
 		// Get repository info to verify it exists and is accessible
-		$repo_info = $this->github_client->get_repository(
+		$repo_info = $this->github_client->get_repository_info(
 			$repository->get_owner(),
 			$repository->get_repo()
 		);
@@ -286,16 +286,19 @@ class RepositoryManager {
 
 			$this->logger->info( "Comparing versions for {$repository->get_key()}: current='{$current_version}' vs branch='{$branch_version}'" );
 
-			// Case 1: For repositories without releases, don't show updates for stable versions
-			// unless we can determine the branch has been updated since the installed version
+			// Case 1: Current version is from a release, but repo has no releases now (switched to branch-only)
 			if ( ! empty( $current_version ) && strpos( $current_version, 'dev-' ) !== 0 ) {
-				// Current version appears to be a release version (e.g., "0.1.0", "1.2.3")
-				// For repositories without releases, this likely means the theme/plugin
-				// was installed with a version tag in its header but the repository
-				// doesn't use GitHub releases. In this case, don't show updates
-				// unless the user explicitly wants to switch to development versions.
-				$this->logger->info( "Repository {$repository->get_key()} has stable version {$current_version} but no releases. Not showing update to avoid false positives." );
-				return null;
+				$this->logger->info( 'Repository switched from releases to branch-only development' );
+				return array(
+					'version'       => $branch_version,
+					'download_url'  => $this->github_client->get_download_url(
+						$repository->get_owner(),
+						$repository->get_repo(),
+						$repository->get_default_branch()
+					),
+					'release_notes' => "Switch to development version from {$repository->get_default_branch()} branch",
+					'release_date'  => $repo_info['updated_at'] ?? '',
+				);
 			}
 
 			// Case 2: Repository uses branch-only development (no update unless current version differs)
@@ -424,7 +427,7 @@ class RepositoryManager {
 			return false;
 		}
 
-		$repo_info = $this->github_client->get_repository(
+		$repo_info = $this->github_client->get_repository_info(
 			$repository->get_owner(),
 			$repository->get_repo()
 		);

@@ -6,95 +6,86 @@ namespace KobGitUpdater\Utils;
 /**
  * Logger utility for debugging and monitoring
  */
-class Logger
-{
-    private string $prefix;
+class Logger {
 
-    public function __construct(string $prefix = 'kob_git_updater')
-    {
-        $this->prefix = $prefix;
-    }
+	private string $prefix;
 
-    /**
-     * Log error messages
-     */
-    public function error(string $message, array $context = []): void
-    {
-        $this->log('ERROR', $message, $context);
-    }
+	public function __construct( string $prefix = 'kob_git_updater' ) {
+		$this->prefix = $prefix;
+	}
 
-    /**
-     * Log info messages
-     */
-    public function info(string $message, array $context = []): void
-    {
-        if (!$this->shouldLogInfo()) {
-            return;
-        }
-        
-        $this->log('INFO', $message, $context);
-    }
+	/**
+	 * Log error messages
+	 */
+	public function error( string $message, array $context = array() ): void {
+		$this->log( 'ERROR', $message, $context );
+	}
 
-    /**
-     * Log debug messages
-     */
-    public function debug(string $message, array $context = []): void
-    {
-        if (!$this->shouldLogDebug()) {
-            return;
-        }
-        
-        $this->log('DEBUG', $message, $context);
-    }
+	/**
+	 * Log info messages
+	 */
+	public function info( string $message, array $context = array() ): void {
+		if ( ! $this->should_log_info() ) {
+			return;
+		}
 
-    /**
-     * Log warning messages
-     */
-    public function warning(string $message, array $context = []): void
-    {
-        $this->log('WARNING', $message, $context);
-    }
+		$this->log( 'INFO', $message, $context );
+	}
 
-    /**
-     * Internal log method
-     */
-    private function log(string $level, string $message, array $context = []): void
-    {
-        if (!$this->shouldLog()) {
-            return;
-        }
+	/**
+	 * Log debug messages
+	 */
+	public function debug( string $message, array $context = array() ): void {
+		if ( ! $this->should_log_debug() ) {
+			return;
+		}
 
-        $logMessage = sprintf('[%s][%s] %s', $this->prefix, $level, $message);
-        
-        if (!empty($context)) {
-            $logMessage .= ' Context: ' . wp_json_encode($context);
-        }
+		$this->log( 'DEBUG', $message, $context );
+	}
 
-        error_log($logMessage);
-    }
+	/**
+	 * Log warning messages
+	 */
+	public function warning( string $message, array $context = array() ): void {
+		$this->log( 'WARNING', $message, $context );
+	}
 
-    /**
-     * Check if logging is enabled
-     */
-    private function shouldLog(): bool
-    {
-        return defined('WP_DEBUG_LOG') && WP_DEBUG_LOG;
-    }
+	/**
+	 * Internal log method
+	 */
+	private function log( string $level, string $message, array $context = array() ): void {
+		if ( ! $this->should_log() ) {
+			return;
+		}
 
-    /**
-     * Check if info logging is enabled
-     */
-    private function shouldLogInfo(): bool
-    {
-        return $this->shouldLog() && defined('WP_DEBUG') && WP_DEBUG;
-    }
+		$log_message = sprintf( '[%s][%s] %s', $this->prefix, $level, $message );
 
-    /**
-     * Check if debug logging is enabled
-     */
-    private function shouldLogDebug(): bool
-    {
-        return $this->shouldLogInfo() && 
-               (defined('GIU_DEBUG') && GIU_DEBUG);
-    }
+		if ( ! empty( $context ) ) {
+			$log_message .= ' Context: ' . wp_json_encode( $context );
+		}
+
+		error_log( $log_message );
+	}
+
+	/**
+	 * Check if logging is enabled
+	 */
+	private function should_log(): bool {
+		return defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG;
+	}
+
+	/**
+	 * Check if info logging is enabled
+	 */
+	private function should_log_info(): bool {
+		return $this->should_log() && defined( 'WP_DEBUG' ) && WP_DEBUG;
+	}
+
+	/**
+	 * Check if debug logging is enabled
+	 */
+	private function should_log_debug(): bool {
+		return $this->should_log_info() &&
+				( defined( 'GIU_DEBUG' ) && GIU_DEBUG );
+	}
 }

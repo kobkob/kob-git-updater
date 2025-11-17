@@ -1,0 +1,124 @@
+<?xml version="1.0"?>
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    name="Kob Git Updater Coding Standards"
+    xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/squizlabs/PHP_CodeSniffer/master/phpcs.xsd">
+
+    <description>WordPress Coding Standards for Kob Git Updater Plugin</description>
+
+    <!-- What to scan -->
+    <file>.</file>
+    
+    <!-- Exclude patterns -->
+    <exclude-pattern>/vendor/*</exclude-pattern>
+    <exclude-pattern>/node_modules/*</exclude-pattern>
+    <exclude-pattern>/tests/*</exclude-pattern>
+    <exclude-pattern>/coverage/*</exclude-pattern>
+    <exclude-pattern>/docker/*</exclude-pattern>
+    <exclude-pattern>/scripts/*</exclude-pattern>
+    <exclude-pattern>/wp-*</exclude-pattern>
+    <exclude-pattern>/xmlrpc.php</exclude-pattern>
+    <exclude-pattern>/index.php</exclude-pattern>
+    <exclude-pattern>*.min.js</exclude-pattern>
+    <exclude-pattern>*.min.css</exclude-pattern>
+
+    <!-- How to scan -->
+    <arg value="sp"/> <!-- Show sniff and progress -->
+    <arg name="basepath" value="."/><!-- Strip the file paths down to the relevant bit -->
+    <arg name="colors"/>
+    <arg name="extensions" value="php"/>
+    <arg name="parallel" value="8"/><!-- Enables parallel processing when available for faster results -->
+
+    <!-- Rules: Check PHP version compatibility -->
+    <config name="minimum_supported_wp_version" value="6.0"/>
+
+    <!-- Rules: WordPress Coding Standards -->
+    <!-- https://github.com/WordPress-Coding-Standards/WordPress-Coding-Standards -->
+    <rule ref="WordPress">
+        <!-- Allow short array syntax -->
+        <exclude name="Generic.Arrays.DisallowShortArraySyntax"/>
+        
+        <!-- Allow closures/anonymous functions -->
+        <exclude name="PEAR.Functions.FunctionCallSignature.ContentAfterOpenBracket"/>
+        <exclude name="PEAR.Functions.FunctionCallSignature.MultipleArguments"/>
+        <exclude name="PEAR.Functions.FunctionCallSignature.CloseBracketLine"/>
+        
+        <!-- Exclude rules that conflict with modern PHP -->
+        <exclude name="WordPress.Arrays.MultipleStatementAlignment.DoubleArrowNotAligned"/>
+        
+        <!-- Allow class file names that don't match WordPress conventions -->
+        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+        
+        <!-- Allow plugin-specific prefixes -->
+        <exclude name="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound"/>
+        <exclude name="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound"/>
+    </rule>
+
+    <!-- Check for PHP cross-version compatibility -->
+    <rule ref="PHPCompatibilityWP"/>
+
+    <!-- Additional WordPress rules -->
+    <rule ref="WordPress.Security.EscapeOutput"/>
+    <rule ref="WordPress.Security.NonceVerification"/>
+    <rule ref="WordPress.Security.ValidatedSanitizedInput"/>
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="kob-git-updater"/>
+            </property>
+        </properties>
+    </rule>
+    
+    <!-- Set the text domain -->
+    <rule ref="WordPress.WP.I18n.MissingTranslatorsComment">
+        <type>warning</type>
+    </rule>
+    
+    <!-- Verify that placeholders in i18n functions are ordered correctly -->
+    <rule ref="WordPress.WP.I18n.MixedOrderedPlaceholdersText"/>
+    <rule ref="WordPress.WP.I18n.MixedOrderedPlaceholdersString"/>
+
+    <!-- Check for correct usage of WordPress functions -->
+    <rule ref="WordPress.WP.AlternativeFunctions"/>
+    <rule ref="WordPress.WP.DiscouragedConstants"/>
+    <rule ref="WordPress.WP.DiscouragedFunctions"/>
+    
+    <!-- Check for proper WordPress database usage -->
+    <rule ref="WordPress.DB.DirectDatabaseQuery">
+        <type>warning</type>
+    </rule>
+    <rule ref="WordPress.DB.PreparedSQL"/>
+    <rule ref="WordPress.DB.SlowDBQuery"/>
+
+    <!-- PSR4 compliance for autoloading -->
+    <rule ref="PSR1.Classes.ClassDeclaration"/>
+    <rule ref="PSR1.Files.SideEffects">
+        <exclude-pattern>kob-git-updater*.php</exclude-pattern>
+        <exclude-pattern>uninstall.php</exclude-pattern>
+    </rule>
+
+    <!-- Modern PHP practices -->
+    <rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
+    <rule ref="Generic.PHP.ForbiddenFunctions"/>
+    <rule ref="Generic.Classes.DuplicateClassName"/>
+
+    <!-- Security -->
+    <rule ref="Generic.PHP.BacktickOperator"/>
+    <rule ref="Generic.Files.ByteOrderMark"/>
+    
+    <!-- Documentation standards -->
+    <rule ref="Squiz.Commenting.ClassComment">
+        <exclude name="Squiz.Commenting.ClassComment.Missing"/>
+    </rule>
+    <rule ref="Squiz.Commenting.FunctionComment">
+        <exclude name="Squiz.Commenting.FunctionComment.Missing"/>
+        <exclude name="Squiz.Commenting.FunctionComment.MissingParamTag"/>
+    </rule>
+
+    <!-- Line length - more lenient for readability -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="150"/>
+        </properties>
+    </rule>
+</ruleset>

@@ -1,0 +1,77 @@
+parameters:
+    level: 8
+    paths:
+        - src/
+    excludePaths:
+        - vendor/
+        - tests/
+        - docker/
+        - wp-*/
+    
+    # WordPress specific settings
+    bootstrapFiles:
+        - vendor/brain/monkey/inc/patchwork-loader.php
+    
+    # Ignore some WordPress-specific errors
+    ignoreErrors:
+        # WordPress functions that PHPStan doesn't understand
+        - '#Function wp_.*\(\) not found#'
+        - '#Function get_.*\(\) not found#'
+        - '#Function add_.*\(\) not found#'
+        - '#Function apply_.*\(\) not found#'
+        - '#Function current_user_can not found#'
+        - '#Function admin_url not found#'
+        - '#Function plugins_url not found#'
+        - '#Function plugin_dir_.*\(\) not found#'
+        - '#Function esc_.*\(\) not found#'
+        - '#Function sanitize_.*\(\) not found#'
+        - '#Function wp_.*_field\(\) not found#'
+        - '#Function check_.*\(\) not found#'
+        - '#Function wp_die not found#'
+        - '#Function wp_redirect not found#'
+        - '#Function wp_cache_.*\(\) not found#'
+        - '#Function wp_create_nonce not found#'
+        - '#Function wp_get_theme not found#'
+        - '#Function delete_.*option\(\) not found#'
+        - '#Function update_option not found#'
+        - '#Function get_option not found#'
+        - '#Function load_plugin_textdomain not found#'
+        - '#Function register_.*_hook not found#'
+        - '#Function wp_enqueue_.*\(\) not found#'
+        - '#Function wp_localize_script not found#'
+        - '#Function submit_button not found#'
+        - '#Function settings_fields not found#'
+        - '#Function do_settings_sections not found#'
+        - '#Function register_setting not found#'
+        - '#Function add_.*_page\(\) not found#'
+        - '#Function add_settings_.*\(\) not found#'
+        
+        # WordPress constants that PHPStan doesn't understand
+        - '#Constant ABSPATH not found#'
+        - '#Constant WP_DEBUG not found#'
+        - '#Constant WP_DEBUG_LOG not found#'
+        - '#Constant WP_PLUGIN_DIR not found#'
+        
+        # WordPress classes that PHPStan doesn't understand
+        - '#Class WP_Error not found#'
+        - '#Class WP_Theme not found#'
+        
+        # WordPress globals
+        - '#Variable \$wpdb might not be defined#'
+        - '#Undefined variable: \$wpdb#'
+        
+        # Allow mixed return types for WordPress compatibility
+        - '#Method .* should return .* but returns mixed#'
+        
+        # Allow array access on mixed types (common in WordPress)
+        - '#Cannot access offset .* on mixed#'
+        
+        # Plugin-specific ignores
+        - '#Parameter \#\d+ .* expects .*, mixed given#'
+    
+    # Check for missing return types
+    checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false
+    
+    # Memory limit for analysis
+    memoryLimitFile: 1G

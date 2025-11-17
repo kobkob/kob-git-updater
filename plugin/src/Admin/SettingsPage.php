@@ -134,13 +134,12 @@ class SettingsPage
             return;
         }
 
-        // Enqueue Tailwind CSS
-        wp_enqueue_script(
-            'giu-tailwind',
-            'https://cdn.tailwindcss.com',
+        // Enqueue custom admin CSS (replaces Tailwind CDN)
+        wp_enqueue_style(
+            'giu-admin',
+            plugins_url('assets/css/admin.css', dirname(__DIR__, 2)),
             [],
-            '3.3.0',
-            false
+            '1.3.1'
         );
 
         // Custom admin script
@@ -173,19 +172,7 @@ class SettingsPage
         $repositories = $this->repository_manager->get_all();
 
         ?>
-        <div class="wrap" style="--primary-color: #00B5A3; --primary-dark: #008B7A;">
-            <script>
-                tailwind.config = {
-                    theme: {
-                        extend: {
-                            colors: {
-                                'primary': 'var(--primary-color)',
-                                'primary-dark': 'var(--primary-dark)',
-                            }
-                        }
-                    }
-                }
-            </script>
+        <div class="kgu-wrap">
 
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 m-6">
                 <div class="flex items-center justify-between p-6 border-b border-gray-200">
@@ -456,10 +443,10 @@ class SettingsPage
 
         check_admin_referer('add_repository', 'add_repository_nonce');
 
-        $owner = sanitize_text_field($_POST['owner'] ?? '');
-        $repo = sanitize_text_field($_POST['repo'] ?? '');
-        $type = sanitize_text_field($_POST['type'] ?? '');
-        $slug = sanitize_text_field($_POST['slug'] ?? '');
+        $owner = sanitize_text_field(wp_unslash($_POST['owner'] ?? ''));
+        $repo = sanitize_text_field(wp_unslash($_POST['repo'] ?? ''));
+        $type = sanitize_text_field(wp_unslash($_POST['type'] ?? ''));
+        $slug = sanitize_text_field(wp_unslash($_POST['slug'] ?? ''));
 
         if (empty($owner) || empty($repo) || empty($type) || empty($slug)) {
             $this->add_admin_notice('error', 'All fields are required.');
@@ -494,7 +481,7 @@ class SettingsPage
 
         check_admin_referer('remove_repository', 'remove_repository_nonce');
 
-        $repository_key = sanitize_text_field($_POST['repository_key'] ?? '');
+        $repository_key = sanitize_text_field(wp_unslash($_POST['repository_key'] ?? ''));
 
         if (empty($repository_key)) {
             $this->add_admin_notice('error', 'Invalid repository key.');
@@ -564,19 +551,7 @@ class SettingsPage
     public function render_documentation_page(): void
     {
         ?>
-        <div class="wrap" style="--primary-color: #00B5A3; --primary-dark: #008B7A;">
-            <script>
-                tailwind.config = {
-                    theme: {
-                        extend: {
-                            colors: {
-                                'primary': 'var(--primary-color)',
-                                'primary-dark': 'var(--primary-dark)',
-                            }
-                        }
-                    }
-                }
-            </script>
+        <div class="kgu-wrap">
 
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 m-6">
                 <div class="flex items-center justify-between p-6 border-b border-gray-200">

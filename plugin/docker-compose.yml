@@ -24,6 +24,9 @@ services:
     build:
       context: ./docker/wordpress
       dockerfile: Dockerfile
+      args:
+        HOST_UID: ${HOST_UID:-1000}
+        HOST_GID: ${HOST_GID:-1000}
     restart: unless-stopped
     ports:
       - "8082:80"
@@ -43,11 +46,11 @@ services:
       # WordPress data persistence
       - wp_data:/var/www/html
       # Plugin files only (selective mounting to avoid conflicts)
-      - ./src:/var/www/html/wp-content/plugins/kob-git-updater/src:ro
-      - ./vendor:/var/www/html/wp-content/plugins/kob-git-updater/vendor:ro
-      - ./assets:/var/www/html/wp-content/plugins/kob-git-updater/assets:ro
-      - ./kob-git-updater-new.php:/var/www/html/wp-content/plugins/kob-git-updater/kob-git-updater.php:ro
-      - ./composer.json:/var/www/html/wp-content/plugins/kob-git-updater/composer.json:ro
+      - ./src:/var/www/html/wp-content/plugins/kob-git-updater/src
+      - ./vendor:/var/www/html/wp-content/plugins/kob-git-updater/vendor
+      - ./assets:/var/www/html/wp-content/plugins/kob-git-updater/assets
+      - ./kob-git-updater-new.php:/var/www/html/wp-content/plugins/kob-git-updater/kob-git-updater.php
+      - ./composer.json:/var/www/html/wp-content/plugins/kob-git-updater/composer.json
       # Logs
       - ./docker/logs/wordpress:/var/log
     depends_on:

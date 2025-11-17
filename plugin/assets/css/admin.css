@@ -1,0 +1,424 @@
+/*
+ * Admin styles for Kob Git Updater Plugin
+ * Replaces Tailwind CSS with WordPress-compliant styling
+ */
+
+:root {
+    --primary-color: #00B5A3;
+    --primary-dark: #008B7A;
+}
+
+/* Layout and containers */
+.kgu-card {
+    background: #ffffff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    margin: 20px 0;
+}
+
+.kgu-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.kgu-card-body {
+    padding: 20px;
+}
+
+.kgu-grid {
+    display: grid;
+    gap: 20px;
+}
+
+.kgu-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.kgu-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 768px) {
+    .kgu-grid-2,
+    .kgu-grid-4 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Flexbox utilities */
+.kgu-flex {
+    display: flex;
+}
+
+.kgu-flex-center {
+    align-items: center;
+}
+
+.kgu-flex-between {
+    justify-content: space-between;
+}
+
+.kgu-flex-end {
+    justify-content: flex-end;
+}
+
+.kgu-space-x-2 > :not(:last-child) {
+    margin-right: 8px;
+}
+
+.kgu-space-x-4 > :not(:last-child) {
+    margin-right: 16px;
+}
+
+.kgu-space-y-4 > :not(:last-child) {
+    margin-bottom: 16px;
+}
+
+.kgu-space-y-6 > :not(:last-child) {
+    margin-bottom: 24px;
+}
+
+/* Typography */
+.kgu-title-lg {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1d2327;
+    margin: 0;
+}
+
+.kgu-title-md {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1d2327;
+    margin: 0 0 16px 0;
+}
+
+.kgu-subtitle {
+    font-size: 14px;
+    color: #646970;
+    margin: 4px 0 0 0;
+}
+
+.kgu-text-sm {
+    font-size: 13px;
+}
+
+/* Buttons */
+.kgu-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    font-size: 13px;
+    line-height: 1.5;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.kgu-btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff;
+}
+
+.kgu-btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: #ffffff;
+}
+
+.kgu-btn-secondary {
+    background-color: #f6f7f7;
+    border-color: #c3c4c7;
+    color: #50575e;
+}
+
+.kgu-btn-secondary:hover {
+    background-color: #f0f0f1;
+    border-color: #8c8f94;
+    color: #1d2327;
+}
+
+/* Form elements */
+.kgu-form-field {
+    margin-bottom: 16px;
+}
+
+.kgu-form-label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+    color: #1d2327;
+    font-size: 14px;
+}
+
+.kgu-form-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.kgu-form-input:focus {
+    border-color: var(--primary-color);
+    outline: 0;
+    box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.kgu-form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.5;
+    background: #ffffff;
+}
+
+.kgu-form-select:focus {
+    border-color: var(--primary-color);
+    outline: 0;
+    box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+/* Notices and alerts */
+.kgu-notice {
+    display: flex;
+    align-items: flex-start;
+    padding: 16px;
+    border: 1px solid;
+    border-radius: 4px;
+    margin: 16px 0;
+}
+
+.kgu-notice-info {
+    background-color: #e7f3ff;
+    border-color: #72aee6;
+    color: #2271b1;
+}
+
+.kgu-notice-success {
+    background-color: #d5e8d4;
+    border-color: #00a32a;
+    color: #00a32a;
+}
+
+.kgu-notice-warning {
+    background-color: #fcf9e8;
+    border-color: #dba617;
+    color: #646970;
+}
+
+.kgu-notice-error {
+    background-color: #fcf0f1;
+    border-color: #d63638;
+    color: #d63638;
+}
+
+.kgu-notice-icon {
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+
+/* Tables */
+.kgu-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #c3c4c7;
+}
+
+.kgu-table th,
+.kgu-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.kgu-table th {
+    background-color: #f6f7f7;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #646970;
+}
+
+.kgu-table tr:hover {
+    background-color: #f6f7f7;
+}
+
+/* Hidden utility */
+.kgu-hidden {
+    display: none !important;
+}
+
+/* Repository status badges */
+.kgu-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.kgu-badge-blue {
+    background-color: #e7f3ff;
+    color: #2271b1;
+}
+
+.kgu-badge-purple {
+    background-color: #f2e7ff;
+    color: #7c3aed;
+}
+
+.kgu-badge-green {
+    background-color: #d5e8d4;
+    color: #00a32a;
+}
+
+.kgu-badge-yellow {
+    background-color: #fcf9e8;
+    color: #996800;
+}
+
+/* Logo and branding */
+.kgu-logo {
+    height: 48px;
+    width: auto;
+}
+
+/* Code elements */
+.kgu-code {
+    background-color: #f6f7f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+}
+
+/* WordPress Dashicons integration */
+.kgu-icon {
+    font-size: 16px;
+    vertical-align: middle;
+}
+
+.kgu-icon-primary {
+    color: var(--primary-color);
+}
+
+/* Responsive utilities */
+@media (max-width: 600px) {
+    .kgu-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .kgu-flex-mobile-column {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 16px;
+    }
+}
+
+/* WordPress admin integration */
+.kgu-wrap {
+    margin: 10px 20px 0 2px;
+}
+
+.kgu-wrap h1 {
+    display: inline-block;
+    font-size: 23px;
+    font-weight: 400;
+    line-height: 1.3;
+    margin: 0 0 8px 0;
+    padding: 9px 0 4px 0;
+}
+
+/* Loading states */
+.kgu-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.kgu-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: kgu-spin 1s linear infinite;
+}
+
+@keyframes kgu-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Action links */
+.kgu-action-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 12px;
+}
+
+.kgu-action-link:hover {
+    color: var(--primary-dark);
+}
+
+.kgu-action-link.delete {
+    color: #d63638;
+}
+
+.kgu-action-link.delete:hover {
+    color: #d63638;
+}
+
+/* Form sections */
+.kgu-form-section {
+    background: #ffffff;
+    border: 1px solid #c3c4c7;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.kgu-form-section h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+/* Documentation styles */
+.kgu-docs-section {
+    margin-bottom: 40px;
+}
+
+.kgu-docs-section h2 {
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.kgu-docs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+/* Ensure WordPress admin compatibility */
+.wrap .kgu-title-lg {
+    font-size: 23px;
+    font-weight: 400;
+    line-height: 1.3;
+    margin: 0 0 8px 0;
+    padding: 9px 0 4px 0;
+}
