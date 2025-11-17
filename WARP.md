@@ -6,7 +6,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 This is a **modular WordPress plugin** that provides GitHub-based installation and automatic updates for WordPress plugins and themes. The plugin has been refactored from a single-file monolith into a modern, object-oriented architecture with comprehensive testing and professional development workflows.
 
-### Current Version: 1.3.1
+### Current Version: 1.3.2
 - **Modular OOP Architecture**: Clean separation of concerns with dependency injection
 - **Comprehensive Testing**: PHPUnit test suite with 38 tests and 90 assertions
 - **Professional Development Environment**: Docker, Makefile, and CI/CD integration
@@ -486,7 +486,7 @@ make wp-info          # Complete WordPress environment info
 ## Version Management
 
 The project follows semantic versioning:
-- **Current Version**: 1.3.1 (modular architecture)
+- **Current Version**: 1.3.2 (WordPress.org compliant)
 - **Version Detection**: Automatic from plugin headers and Git tags
 - **Release Process**: Automated via `make deploy`
 - **Changelog**: Maintained in CHANGELOG.md
