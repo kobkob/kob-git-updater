@@ -25,8 +25,16 @@
 
 ## 📦 **Submission Package**
 
-**Built Package**: `dist/kob-git-updater-1.3.2.zip` (176KB)
+**Clean WordPress.org Package**: `dist/kob-git-updater-1.3.2-wp-org.zip` (84KB)
+**Build Command**: `make build-wp-org`
 **GitHub Release**: v1.3.1 tagged and available
+
+### **Clean Build Features**
+- ✅ **No Development Files**: Docker configs, tests, development docs removed
+- ✅ **No Hidden Files**: .git, .env, .swp files excluded
+- ✅ **Production Dependencies Only**: Optimized vendor directory
+- ✅ **WordPress.org Optimized**: Only essential files included
+- ✅ **Small Package Size**: 84KB vs 176KB (52% smaller)
 
 ## 🚀 **Submission Process**
 
@@ -36,7 +44,7 @@
 
 ### Step 2: Plugin Submission
 1. Go to https://wordpress.org/plugins/developers/add/
-2. Upload: `dist/kob-git-updater-latest.zip`
+2. Upload: `dist/kob-git-updater-wp-org-latest.zip`
 3. Fill out submission form with details below
 
 ### Step 3: Submission Form Details

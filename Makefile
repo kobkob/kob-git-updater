@@ -135,6 +135,15 @@ build-dev-manual: ## Manual development build process
 	@cd $(BUILD_DIR)-dev && zip -r ../$(DIST_DIR)/$(PLUGIN_NAME)-$(PLUGIN_VERSION)-dev.zip $(PLUGIN_NAME)
 	@echo "$(GREEN)✓ Development build created: $(DIST_DIR)/$(PLUGIN_NAME)-$(PLUGIN_VERSION)-dev.zip$(NC)"
 
+build-wp-org: ## Create clean WordPress.org submission package
+	@echo "$(BLUE)Creating WordPress.org submission package...$(NC)"
+	@if [ -x "scripts/build-wordpress-org.sh" ]; then \
+		scripts/build-wordpress-org.sh; \
+	else \
+		echo "$(RED)WordPress.org build script not found$(NC)"; \
+		exit 1; \
+	fi
+
 ##@ Docker
 
 docker-build: ## Build Docker development environment
