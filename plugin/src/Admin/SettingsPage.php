@@ -51,6 +51,7 @@ class SettingsPage
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_post_add_repository', [$this, 'handle_add_repository']);
         add_action('admin_post_remove_repository', [$this, 'handle_remove_repository']);
+        add_action('admin_post_force_update_repository', [$this, 'handle_force_update_repository']);
         add_action('admin_post_test_github_connection', [$this, 'handle_test_connection']);
         add_action('admin_post_clear_cache', [$this, 'handle_clear_cache']);
         add_action('admin_notices', [$this, 'display_admin_notices']);
@@ -156,6 +157,7 @@ class SettingsPage
             'nonce' => wp_create_nonce('giu_admin_nonce'),
             'strings' => [
                 'confirmRemove' => __('Are you sure you want to remove this repository?', 'kob-git-updater'),
+                'confirmForceUpdate' => __('Force update check for this repository? This will clear the cache and check for new versions.', 'kob-git-updater'),
                 'testingConnection' => __('Testing connection...', 'kob-git-updater'),
                 'connectionSuccess' => __('Connection successful!', 'kob-git-updater'),
                 'connectionFailed' => __('Connection failed.', 'kob-git-updater'),
@@ -342,15 +344,27 @@ class SettingsPage
                                                 <?php endif; ?>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="inline-block">
-                                                    <?php wp_nonce_field('remove_repository', 'remove_repository_nonce'); ?>
-                                                    <input type="hidden" name="action" value="remove_repository">
-                                                    <input type="hidden" name="repository_key" value="<?php echo esc_attr($repo->get_key()); ?>">
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm"
-                                                            onclick="return confirm('<?php echo esc_js(__('Are you sure you want to remove this repository?', 'kob-git-updater')); ?>')">
-                                                        Remove
-                                                    </button>
-                                                </form>
+                                                <div class="flex items-center justify-end space-x-2">
+                                                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="inline-block">
+                                                        <?php wp_nonce_field('force_update_repository', 'force_update_repository_nonce'); ?>
+                                                        <input type="hidden" name="action" value="force_update_repository">
+                                                        <input type="hidden" name="repository_key" value="<?php echo esc_attr($repo->get_key()); ?>">
+                                                        <button type="submit" class="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                                                                onclick="return confirm('<?php echo esc_js(__('Force update check for this repository? This will clear the cache and check for new versions.', 'kob-git-updater')); ?>')">
+                                                            <span class="dashicons dashicons-update text-sm"></span>
+                                                            Force Update
+                                                        </button>
+                                                    </form>
+                                                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="inline-block">
+                                                        <?php wp_nonce_field('remove_repository', 'remove_repository_nonce'); ?>
+                                                        <input type="hidden" name="action" value="remove_repository">
+                                                        <input type="hidden" name="repository_key" value="<?php echo esc_attr($repo->get_key()); ?>">
+                                                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm"
+                                                                onclick="return confirm('<?php echo esc_js(__('Are you sure you want to remove this repository?', 'kob-git-updater')); ?>')">
+                                                            Remove
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -522,6 +536,50 @@ class SettingsPage
         } else {
             $this->add_admin_notice('error', 'GitHub connection test failed. Please check your token.');
         }
+
+        wp_redirect(admin_url('admin.php?page=' . self::PAGE_SLUG));
+        exit;
+    }
+
+    /**
+     * Handle force update repository form submission
+     */
+    public function handle_force_update_repository(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        check_admin_referer('force_update_repository', 'force_update_repository_nonce');
+
+        $repository_key = sanitize_text_field(wp_unslash($_POST['repository_key'] ?? ''));
+
+        if (empty($repository_key)) {
+            $this->add_admin_notice('error', 'Invalid repository key.');
+            wp_redirect(admin_url('admin.php?page=' . self::PAGE_SLUG));
+            exit;
+        }
+
+        $repository = $this->repository_manager->get($repository_key);
+        if (!$repository) {
+            $this->add_admin_notice('error', "Repository {$repository_key} not found.");
+            wp_redirect(admin_url('admin.php?page=' . self::PAGE_SLUG));
+            exit;
+        }
+
+        // Clear cache for this specific repository
+        $token = get_option(self::GITHUB_TOKEN_OPTION, '');
+        $this->github_client->set_token($token);
+        $this->github_client->clear_cache($repository->get_owner(), $repository->get_repo());
+        
+        // Force WordPress to check for updates by deleting the update transients
+        if ($repository->is_plugin()) {
+            delete_site_transient('update_plugins');
+        } else {
+            delete_site_transient('update_themes');
+        }
+
+        $this->add_admin_notice('success', "Force update triggered for {$repository_key}. Check WordPress Updates page for available updates.");
 
         wp_redirect(admin_url('admin.php?page=' . self::PAGE_SLUG));
         exit;
