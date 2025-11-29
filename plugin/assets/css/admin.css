@@ -1,299 +1,239 @@
 /*
  * Admin styles for Kob Git Updater Plugin
- * Replaces Tailwind CSS with WordPress-compliant styling
+ * Complements Bootstrap with custom theming and WordPress admin integration
  */
 
 :root {
-    --primary-color: #00B5A3;
-    --primary-dark: #008B7A;
+    --kgu-primary: #00B5A3;
+    --kgu-primary-dark: #008B7A;
+    --kgu-primary-light: #4DCCC3;
 }
 
-/* Layout and containers */
-.kgu-card {
-    background: #ffffff;
-    border: 1px solid #c3c4c7;
-    border-radius: 4px;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-    margin: 20px 0;
+/* Bootstrap customization for WordPress admin integration */
+.btn-primary {
+    background-color: var(--kgu-primary);
+    border-color: var(--kgu-primary);
 }
 
-.kgu-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid #c3c4c7;
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--kgu-primary-dark);
+    border-color: var(--kgu-primary-dark);
 }
 
-.kgu-card-body {
-    padding: 20px;
+.btn-outline-primary {
+    color: var(--kgu-primary);
+    border-color: var(--kgu-primary);
 }
 
-.kgu-grid {
-    display: grid;
-    gap: 20px;
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+    background-color: var(--kgu-primary);
+    border-color: var(--kgu-primary);
 }
 
-.kgu-grid-2 {
-    grid-template-columns: repeat(2, 1fr);
+.text-primary {
+    color: var(--kgu-primary) !important;
 }
 
-.kgu-grid-4 {
-    grid-template-columns: repeat(4, 1fr);
+.bg-primary {
+    background-color: var(--kgu-primary) !important;
 }
 
-@media (max-width: 768px) {
-    .kgu-grid-2,
-    .kgu-grid-4 {
-        grid-template-columns: 1fr;
-    }
+.badge.bg-primary {
+    background-color: var(--kgu-primary) !important;
 }
 
-/* Flexbox utilities */
-.kgu-flex {
-    display: flex;
-}
-
-.kgu-flex-center {
-    align-items: center;
-}
-
-.kgu-flex-between {
-    justify-content: space-between;
-}
-
-.kgu-flex-end {
-    justify-content: flex-end;
-}
-
-.kgu-space-x-2 > :not(:last-child) {
-    margin-right: 8px;
-}
-
-.kgu-space-x-4 > :not(:last-child) {
-    margin-right: 16px;
-}
-
-.kgu-space-y-4 > :not(:last-child) {
-    margin-bottom: 16px;
-}
-
-.kgu-space-y-6 > :not(:last-child) {
-    margin-bottom: 24px;
-}
-
-/* Typography */
-.kgu-title-lg {
-    font-size: 24px;
-    font-weight: 600;
-    color: #1d2327;
-    margin: 0;
-}
-
-.kgu-title-md {
-    font-size: 20px;
-    font-weight: 600;
-    color: #1d2327;
-    margin: 0 0 16px 0;
-}
-
-.kgu-subtitle {
-    font-size: 14px;
-    color: #646970;
-    margin: 4px 0 0 0;
-}
-
-.kgu-text-sm {
-    font-size: 13px;
-}
-
-/* Buttons */
-.kgu-btn {
+/* WordPress Dashicons integration with Bootstrap */
+.dashicons {
+    font-family: dashicons;
     display: inline-block;
-    padding: 8px 16px;
-    border: 1px solid transparent;
-    border-radius: 3px;
-    font-size: 13px;
-    line-height: 1.5;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    line-height: 1;
+    font-weight: normal;
+    font-style: normal;
+    speak: never;
+    text-decoration: inherit;
+    text-transform: none;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
 }
 
-.kgu-btn-primary {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
-    color: #ffffff;
+.dashicons:before {
+    font-family: dashicons;
+    font-size: 1em;
+    line-height: 1;
 }
 
-.kgu-btn-primary:hover {
-    background-color: var(--primary-dark);
-    border-color: var(--primary-dark);
-    color: #ffffff;
+/* WordPress admin page integration */
+.wrap h1, .wrap h2 {
+    margin-top: 0 !important;
 }
 
-.kgu-btn-secondary {
-    background-color: #f6f7f7;
-    border-color: #c3c4c7;
-    color: #50575e;
+.container-fluid {
+    padding-left: 0 !important;
+    padding-right: 20px !important;
+    max-width: none !important;
 }
 
-.kgu-btn-secondary:hover {
-    background-color: #f0f0f1;
-    border-color: #8c8f94;
-    color: #1d2327;
-}
-
-/* Form elements */
-.kgu-form-field {
-    margin-bottom: 16px;
-}
-
-.kgu-form-label {
-    display: block;
-    margin-bottom: 4px;
-    font-weight: 600;
-    color: #1d2327;
-    font-size: 14px;
-}
-
-.kgu-form-input {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #8c8f94;
-    border-radius: 4px;
-    font-size: 14px;
-    line-height: 1.5;
-}
-
-.kgu-form-input:focus {
-    border-color: var(--primary-color);
-    outline: 0;
-    box-shadow: 0 0 0 1px var(--primary-color);
-}
-
-.kgu-form-select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #8c8f94;
-    border-radius: 4px;
-    font-size: 14px;
-    line-height: 1.5;
-    background: #ffffff;
-}
-
-.kgu-form-select:focus {
-    border-color: var(--primary-color);
-    outline: 0;
-    box-shadow: 0 0 0 1px var(--primary-color);
-}
-
-/* Notices and alerts */
-.kgu-notice {
-    display: flex;
-    align-items: flex-start;
-    padding: 16px;
-    border: 1px solid;
-    border-radius: 4px;
-    margin: 16px 0;
-}
-
-.kgu-notice-info {
-    background-color: #e7f3ff;
-    border-color: #72aee6;
-    color: #2271b1;
-}
-
-.kgu-notice-success {
-    background-color: #d5e8d4;
-    border-color: #00a32a;
-    color: #00a32a;
-}
-
-.kgu-notice-warning {
-    background-color: #fcf9e8;
-    border-color: #dba617;
-    color: #646970;
-}
-
-.kgu-notice-error {
-    background-color: #fcf0f1;
-    border-color: #d63638;
-    color: #d63638;
-}
-
-.kgu-notice-icon {
-    flex-shrink: 0;
-    margin-right: 12px;
-}
-
-/* Tables */
-.kgu-table {
-    width: 100%;
-    border-collapse: collapse;
+/* Card enhancements */
+.card {
     border: 1px solid #c3c4c7;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 }
 
-.kgu-table th,
-.kgu-table td {
-    padding: 12px;
-    text-align: left;
+.card-header {
+    background-color: #f6f7f7 !important;
     border-bottom: 1px solid #c3c4c7;
 }
 
-.kgu-table th {
-    background-color: #f6f7f7;
-    font-weight: 600;
-    font-size: 12px;
-    text-transform: uppercase;
-    color: #646970;
+/* Table enhancements */
+.table > :not(caption) > * > * {
+    padding: 0.75rem 0.5rem;
 }
 
-.kgu-table tr:hover {
-    background-color: #f6f7f7;
+.table-hover > tbody > tr:hover > td,
+.table-hover > tbody > tr:hover > th {
+    background-color: rgba(0, 181, 163, 0.05);
 }
 
-/* Hidden utility */
-.kgu-hidden {
-    display: none !important;
-}
-
-/* Repository status badges */
-.kgu-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 12px;
+/* Badge styling */
+.badge {
+    font-size: 0.75em;
     font-weight: 500;
 }
 
-.kgu-badge-blue {
-    background-color: #e7f3ff;
-    color: #2271b1;
+.badge .dashicons {
+    font-size: 0.8em;
+    margin-right: 2px;
 }
 
-.kgu-badge-purple {
-    background-color: #f2e7ff;
-    color: #7c3aed;
+/* Button group improvements */
+.btn-group .btn {
+    margin-right: 0;
 }
 
-.kgu-badge-green {
-    background-color: #d5e8d4;
-    color: #00a32a;
+/* Form enhancements */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--kgu-primary);
+    box-shadow: 0 0 0 0.2rem rgba(0, 181, 163, 0.25);
 }
 
-.kgu-badge-yellow {
-    background-color: #fcf9e8;
-    color: #996800;
+/* Alert customization */
+.alert-info {
+    border-color: rgba(0, 181, 163, 0.2);
+    background-color: rgba(0, 181, 163, 0.05);
 }
 
-/* Logo and branding */
-.kgu-logo {
-    height: 48px;
-    width: auto;
+.alert-info .alert-heading {
+    color: var(--kgu-primary-dark);
 }
 
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.25rem !important;
+        margin-bottom: 0.25rem;
+    }
+    
+    .table-responsive {
+        border: none;
+    }
+    
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 1rem;
+    }
+    
+    .card-header .d-flex > div:first-child {
+        order: 1;
+    }
+    
+    .card-header .d-flex > div:last-child {
+        order: 2;
+        align-self: flex-end;
+    }
+}
+
+@media (max-width: 576px) {
+    .container-fluid {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+    
+    .card {
+        margin: 0 -10px;
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+    }
+    
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+/* WordPress admin notice compatibility */
+.notice {
+    margin: 1rem 0;
+}
+
+/* Loading states */
+.btn[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Custom utilities */
+.text-muted {
+    color: #646970 !important;
+}
+
+.bg-light {
+    background-color: #f6f7f7 !important;
+}
+
+/* Code styling */
+code {
+    font-size: 0.875em;
+    color: #d63384;
+    background-color: #f8f9fa;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+}
+
+/* Link styling within cards */
+.card a:not(.btn) {
+    color: var(--kgu-primary);
+    text-decoration: none;
+}
+
+.card a:not(.btn):hover {
+    color: var(--kgu-primary-dark);
+    text-decoration: underline;
+}
+
+/* Icon alignment */
+.btn .dashicons {
+    margin-top: -2px;
+    margin-right: 4px;
+}
+
+.btn-sm .dashicons {
+    margin-top: -1px;
+    margin-right: 2px;
+}
 /* Code elements */
 .kgu-code {
     background-color: #f6f7f7;

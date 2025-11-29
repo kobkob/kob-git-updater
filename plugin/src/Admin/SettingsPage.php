@@ -135,12 +135,20 @@ class SettingsPage
             return;
         }
 
-        // Enqueue custom admin CSS (replaces Tailwind CDN)
+        // Enqueue Bootstrap CSS for better UI components
+        wp_enqueue_style(
+            'giu-bootstrap',
+            plugins_url('assets/css/bootstrap.min.css', dirname(__DIR__, 2)),
+            [],
+            '5.3.3'
+        );
+        
+        // Enqueue custom admin CSS (complements Bootstrap)
         wp_enqueue_style(
             'giu-admin',
             plugins_url('assets/css/admin.css', dirname(__DIR__, 2)),
-            [],
-            '1.3.1'
+            ['giu-bootstrap'],
+            '1.3.2'
         );
 
         // Custom admin script
@@ -174,47 +182,48 @@ class SettingsPage
         $repositories = $this->repository_manager->get_all();
 
         ?>
-        <div class="kgu-wrap">
+        <div class="container-fluid mt-4">
 
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 m-6">
-                <div class="flex items-center justify-between p-6 border-b border-gray-200">
-                    <div class="flex items-center space-x-4">
-                        <img src="/wp-content/plugins/kob-git-updater/assets/img/logo_en.jpg" 
-                             alt="Kob Git Updater" class="h-12 w-auto">
-                        <div>
-                            <h1 class="text-2xl font-bold text-gray-900 m-0">Kob Git Updater Configuration</h1>
-                            <p class="text-gray-600 text-sm mt-1">Manage GitHub repositories for automatic updates</p>
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <img src="/wp-content/plugins/kob-git-updater/assets/img/logo_en.jpg" 
+                                 alt="Kob Git Updater" class="me-3" style="height: 48px;">
+                            <div>
+                                <h1 class="h3 mb-0 fw-bold text-dark">Kob Git Updater Configuration</h1>
+                                <p class="text-muted small mb-0 mt-1">Manage GitHub repositories for automatic updates</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex space-x-2">
-                        <?php submit_button(__('Test Connection', 'kob-git-updater'), 'secondary', 'test_connection', false, [
-                            'id' => 'test-connection-btn'
-                        ]); ?>
-                        <?php submit_button(__('Clear Cache', 'kob-git-updater'), 'secondary', 'clear_cache', false, [
-                            'id' => 'clear-cache-btn'
-                        ]); ?>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="test-connection-btn" class="btn btn-outline-secondary btn-sm">
+                                <i class="dashicons dashicons-admin-tools me-1"></i>
+                                <?php _e('Test Connection', 'kob-git-updater'); ?>
+                            </button>
+                            <button type="button" id="clear-cache-btn" class="btn btn-outline-secondary btn-sm">
+                                <i class="dashicons dashicons-update me-1"></i>
+                                <?php _e('Clear Cache', 'kob-git-updater'); ?>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- GitHub Token Configuration -->
-                <div class="p-6">
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                        <div class="flex items-start">
-                            <div class="flex-shrink-0">
-                                <span class="dashicons dashicons-info text-blue-600"></span>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium text-blue-800">GitHub Personal Access Token Required</h3>
-                                <div class="mt-2 text-sm text-blue-700">
-                                    <p>To access private repositories and avoid rate limits, configure your GitHub Personal Access Token.</p>
-                                    <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" 
-                                       class="text-blue-600 underline">Create new token →</a>
-                                </div>
-                            </div>
+                <div class="card-body">
+                    <div class="alert alert-info d-flex align-items-start">
+                        <i class="dashicons dashicons-info text-primary me-3 mt-1"></i>
+                        <div>
+                            <h6 class="alert-heading mb-2">GitHub Personal Access Token Required</h6>
+                            <p class="mb-2">To access private repositories and avoid rate limits, configure your GitHub Personal Access Token.</p>
+                            <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="dashicons dashicons-external"></i>
+                                Create new token
+                            </a>
                         </div>
                     </div>
 
-                    <form method="post" action="options.php" class="space-y-6">
+                    <form method="post" action="options.php">
                         <?php
                         settings_fields(self::OPTION_GROUP);
                         do_settings_sections(self::PAGE_SLUG);
@@ -222,146 +231,156 @@ class SettingsPage
                     </form>
                 </div>
 
-                <!-- Repository Management -->
-                <div class="border-t border-gray-200 p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-lg font-semibold text-gray-900">Repository Management</h2>
+            </div>
+            
+            <!-- Repository Management -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h2 class="h5 mb-0 fw-semibold">Repository Management</h2>
                         <button type="button" 
-                                class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                                onclick="document.getElementById('add-repo-form').classList.toggle('hidden')">
+                                class="btn btn-primary btn-sm"
+                                onclick="document.getElementById('add-repo-form').classList.toggle('d-none')">
+                            <i class="dashicons dashicons-plus-alt me-1"></i>
                             Add Repository
                         </button>
                     </div>
+                </div>
+                <div class="card-body">
 
                     <!-- Add Repository Form -->
-                    <div id="add-repo-form" class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 hidden">
-                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="space-y-4">
+                    <div id="add-repo-form" class="border rounded-3 p-4 mb-4 bg-light d-none">
+                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                             <?php wp_nonce_field('add_repository', 'add_repository_nonce'); ?>
                             <input type="hidden" name="action" value="add_repository">
                             
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                                    <input type="text" name="owner" required 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                                           placeholder="e.g., owner">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label for="owner" class="form-label fw-medium">Owner</label>
+                                    <input type="text" id="owner" name="owner" required 
+                                           class="form-control form-control-sm"
+                                           placeholder="e.g., username">
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Repository</label>
-                                    <input type="text" name="repo" required 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                <div class="col-md-3">
+                                    <label for="repo" class="form-label fw-medium">Repository</label>
+                                    <input type="text" id="repo" name="repo" required 
+                                           class="form-control form-control-sm"
                                            placeholder="e.g., my-plugin">
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                    <select name="type" required class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                                <div class="col-md-3">
+                                    <label for="type" class="form-label fw-medium">Type</label>
+                                    <select id="type" name="type" required class="form-select form-select-sm">
                                         <option value="plugin">Plugin</option>
                                         <option value="theme">Theme</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">WordPress Slug</label>
-                                    <input type="text" name="slug" required 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                <div class="col-md-3">
+                                    <label for="slug" class="form-label fw-medium">WordPress Slug</label>
+                                    <input type="text" id="slug" name="slug" required 
+                                           class="form-control form-control-sm"
                                            placeholder="e.g., my-plugin">
                                 </div>
                             </div>
                             
-                            <div class="flex justify-end space-x-2">
+                            <div class="d-flex justify-content-end gap-2 mt-3">
                                 <button type="button" 
-                                        class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                                        onclick="document.getElementById('add-repo-form').classList.add('hidden')">
+                                        class="btn btn-outline-secondary btn-sm"
+                                        onclick="document.getElementById('add-repo-form').classList.add('d-none')">
                                     Cancel
                                 </button>
-                                <?php submit_button(__('Add Repository', 'kob-git-updater'), 'primary', 'submit', false, [
-                                    'class' => 'bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md text-sm font-medium'
-                                ]); ?>
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="dashicons dashicons-plus-alt me-1"></i>
+                                    <?php _e('Add Repository', 'kob-git-updater'); ?>
+                                </button>
                             </div>
                         </form>
                     </div>
 
                     <!-- Repositories List -->
                     <?php if (empty($repositories)): ?>
-                        <div class="text-center py-8">
-                            <span class="dashicons dashicons-portfolio text-gray-400 text-4xl"></span>
-                            <h3 class="text-lg font-medium text-gray-900 mt-2">No repositories configured</h3>
-                            <p class="text-gray-600">Add your first repository to get started with automatic updates.</p>
+                        <div class="text-center py-5">
+                            <i class="dashicons dashicons-portfolio text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="mt-3 fw-medium">No repositories configured</h5>
+                            <p class="text-muted">Add your first repository to get started with automatic updates.</p>
                         </div>
                     <?php else: ?>
-                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Repository</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slug</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th scope="col">Repository</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Slug</th>
+                                        <th scope="col">Branch</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col" class="text-end">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
+                                <tbody>
                                     <?php foreach ($repositories as $repo): ?>
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="flex items-center">
-                                                    <span class="dashicons dashicons-<?php echo $repo->is_plugin() ? 'admin-plugins' : 'admin-appearance'; ?> text-gray-400 mr-2"></span>
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="dashicons dashicons-<?php echo $repo->is_plugin() ? 'admin-plugins' : 'admin-appearance'; ?> text-muted me-2"></i>
                                                     <div>
-                                                        <div class="text-sm font-medium text-gray-900">
+                                                        <div class="fw-medium">
                                                             <a href="<?php echo esc_url($repo->get_github_url()); ?>" 
-                                                               target="_blank" class="hover:text-primary">
+                                                               target="_blank" class="text-decoration-none text-primary">
                                                                 <?php echo esc_html($repo->get_display_name()); ?>
                                                             </a>
                                                         </div>
-                                                        <div class="text-sm text-gray-500">
+                                                        <small class="text-muted">
                                                             Added <?php echo esc_html($repo->get_time_since_added()); ?> ago
-                                                        </div>
+                                                        </small>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-<?php echo $repo->is_plugin() ? 'blue' : 'purple'; ?>-100 text-<?php echo $repo->is_plugin() ? 'blue' : 'purple'; ?>-800">
+                                            <td>
+                                                <span class="badge bg-<?php echo $repo->is_plugin() ? 'primary' : 'secondary'; ?>">
                                                     <?php echo esc_html($repo->get_type_label()); ?>
                                                 </span>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <code class="bg-gray-100 px-2 py-1 rounded text-xs"><?php echo esc_html($repo->get_slug()); ?></code>
+                                            <td>
+                                                <code class="bg-light px-2 py-1 rounded"><?php echo esc_html($repo->get_slug()); ?></code>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <?php echo esc_html($repo->get_default_branch()); ?>
+                                            <td>
+                                                <span class="text-muted"><?php echo esc_html($repo->get_default_branch()); ?></span>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
+                                            <td>
                                                 <?php if ($repo->is_private()): ?>
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                        <span class="dashicons dashicons-lock text-xs mr-1"></span>
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="dashicons dashicons-lock" style="font-size: 12px;"></i>
                                                         Private
                                                     </span>
                                                 <?php else: ?>
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                        <span class="dashicons dashicons-unlock text-xs mr-1"></span>
+                                                    <span class="badge bg-success">
+                                                        <i class="dashicons dashicons-unlock" style="font-size: 12px;"></i>
                                                         Public
                                                     </span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <div class="flex items-center justify-end space-x-2">
-                                                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="inline-block">
+                                            <td class="text-end">
+                                                <div class="btn-group" role="group">
+                                                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="d-inline">
                                                         <?php wp_nonce_field('force_update_repository', 'force_update_repository_nonce'); ?>
                                                         <input type="hidden" name="action" value="force_update_repository">
                                                         <input type="hidden" name="repository_key" value="<?php echo esc_attr($repo->get_key()); ?>">
-                                                        <button type="submit" class="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                                                                onclick="return confirm('<?php echo esc_js(__('Force update check for this repository? This will clear the cache and check for new versions.', 'kob-git-updater')); ?>')">
-                                                            <span class="dashicons dashicons-update text-sm"></span>
-                                                            Force Update
+                                                        <button type="submit" class="btn btn-outline-primary btn-sm"
+                                                                onclick="return confirm('<?php echo esc_js(__('Force update check for this repository? This will clear the cache and check for new versions.', 'kob-git-updater')); ?>')" 
+                                                                title="Force Update">
+                                                            <i class="dashicons dashicons-update"></i>
+                                                            <span class="d-none d-md-inline ms-1">Force Update</span>
                                                         </button>
                                                     </form>
-                                                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="inline-block">
+                                                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="d-inline">
                                                         <?php wp_nonce_field('remove_repository', 'remove_repository_nonce'); ?>
                                                         <input type="hidden" name="action" value="remove_repository">
                                                         <input type="hidden" name="repository_key" value="<?php echo esc_attr($repo->get_key()); ?>">
-                                                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm"
-                                                                onclick="return confirm('<?php echo esc_js(__('Are you sure you want to remove this repository?', 'kob-git-updater')); ?>')">
-                                                            Remove
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                                onclick="return confirm('<?php echo esc_js(__('Are you sure you want to remove this repository?', 'kob-git-updater')); ?>')" 
+                                                                title="Remove">
+                                                            <i class="dashicons dashicons-trash"></i>
+                                                            <span class="d-none d-lg-inline ms-1">Remove</span>
                                                         </button>
                                                     </form>
                                                 </div>
