@@ -6,8 +6,10 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 This is a **modular WordPress plugin** that provides GitHub-based installation and automatic updates for WordPress plugins and themes. The plugin has been refactored from a single-file monolith into a modern, object-oriented architecture with comprehensive testing and professional development workflows.
 
-### Current Version: 1.3.2
+### Current Version: 1.4.0
 - **Modular OOP Architecture**: Clean separation of concerns with dependency injection
+- **Bootstrap 5.3 UI**: Professional responsive interface with beautiful components
+- **Force Update Functionality**: Manual update triggers for individual repositories
 - **Comprehensive Testing**: PHPUnit test suite with 38 tests and 90 assertions
 - **Professional Development Environment**: Docker, Makefile, and CI/CD integration
 - **GitHub API Integration**: Cached API client with rate limit handling
@@ -18,9 +20,10 @@ This is a **modular WordPress plugin** that provides GitHub-based installation a
 - **Container System**: Dependency injection container for service management
 - **Plugin Core**: Main plugin orchestration and WordPress integration
 - **GitHub API Client**: Handles authentication, release fetching, and API caching
-- **Repository Manager**: Manages plugin/theme installations and updates
+- **Repository Manager**: Manages plugin/theme installations and updates with force update support
 - **Repository Model**: Data model for GitHub repository representation
-- **Settings Interface**: Modern admin interface with Tailwind CSS styling
+- **Settings Interface**: Modern Bootstrap 5.3 admin interface with responsive design
+- **Force Update System**: Individual repository update triggers with cache clearing
 - **Testing Framework**: Comprehensive PHPUnit tests with WordPress mocking
 
 ## Project Structure
@@ -503,100 +506,91 @@ The project follows semantic versioning:
 
 The plugin maintains backward compatibility while providing a modern, maintainable codebase for future development.
 
-## Recent Bug Fixes and Enhancements (Post v1.3.1)
+## Recent Major Enhancements (v1.4.0 - Nov 2025)
 
-### WordPress.org Directory Compliance (Nov 2025)
+### Force Update Functionality
 
-**Goal**: Prepare the plugin for submission to the WordPress.org plugin directory by implementing comprehensive WordPress coding standards compliance.
+**Goal**: Provide users with manual control over repository update checks without waiting for WordPress's automatic schedule.
 
-**Achievements**:
-1. **Fixed 4,979 WordPress Coding Standard Violations**
-   - Auto-fixed through multiple PHPCBF runs
-   - Manually resolved critical interface/method naming issues
-   - Fixed variable naming conventions (snake_case)
+**Implementation**:
+1. **Force Update Handler**: Added `handle_force_update_repository()` method in `SettingsPage.php`
+   - Validates user permissions with `manage_options` capability
+   - Verifies nonce security for all requests
+   - Clears repository-specific GitHub API cache
+   - Deletes WordPress update transients to force immediate re-check
 
-2. **Interface and Method Name Compliance**
-   - Updated `GitHubApiClientInterface` and `RepositoryInterface` to use snake_case method names
-   - Fixed implementing classes (`GitHubApiClient`, `Repository`) to match interfaces
-   - Removed legacy camelCase wrapper methods
+2. **UI Integration**: Added force update buttons to repository table
+   - Blue "Force Update" button with update icon for each repository
+   - JavaScript confirmation dialog to prevent accidental clicks
+   - Responsive design that works on mobile devices
+   - Clear user feedback via admin notices
 
-3. **Security and Sanitization Improvements**
-   - Fixed `$_POST` unslashing before sanitization using `wp_unslash()`
-   - Maintained proper nonce verification and capability checks
-   - Enhanced input validation throughout admin interface
+3. **Security & UX**:
+   - Proper nonce verification (`force_update_repository_nonce`)
+   - User confirmation with descriptive messaging
+   - Error handling for invalid repositories
+   - Success messages directing users to WordPress Updates page
 
-4. **WordPress.org Required Files Created**
-   - ✅ `readme.txt` with all required sections (description, installation, FAQ, changelog)
-   - ✅ `uninstall.php` for proper plugin cleanup during deletion
-   - ✅ Removed external CDN dependencies (replaced Tailwind CSS with local `assets/css/admin.css`)
-   - ✅ Added translation template (`languages/kob-git-updater.pot`)
-   - ✅ Added WordPress coding standards configuration (`phpcs.xml.dist`)
-
-5. **Code Organization**
-   - Removed legacy file (`kob-git-updater-legacy.php`) with 371+ violations
-   - Fixed variable naming: `$settingsPage` → `$settings_page`, `$updateChecker` → `$update_checker`, `$logMessage` → `$log_message`
-   - Maintained all 38 PHPUnit tests passing
-
-**Technical Changes**:
+**Technical Implementation**:
 ```php
-// Interface methods now use snake_case
-public function get_latest_release( string $owner, string $repo ): ?array;
-public function get_repository( string $owner, string $repo ): ?array;
-public function get_download_url( string $owner, string $repo, string $ref ): ?string;
+// New admin post hook registration
+add_action('admin_post_force_update_repository', [$this, 'handle_force_update_repository']);
 
-// Fixed POST data handling
-$owner = sanitize_text_field(wp_unslash($_POST['owner'] ?? ''));
-$repo = sanitize_text_field(wp_unslash($_POST['repo'] ?? ''));
-```
-
-**Status**: Plugin is now substantially compliant with WordPress.org directory requirements and ready for submission review.
-
-### Fatal Error Fix - Method Name Consistency (Nov 2025)
-
-**Issue**: Fatal error introduced during WordPress coding standards refactoring: `Call to undefined method KobGitUpdater\GitHub\GitHubApiClient::get_repository_info()`
-
-**Root Cause**: During interface compliance work, `get_repository_info()` was renamed to `get_repository()` in the `GitHubApiClient` class, but three method calls in `RepositoryManager.php` were not updated.
-
-**Files Fixed**:
-- **`src/Repository/RepositoryManager.php`** (lines 90, 278, 427)
-  - Changed `$this->github_client->get_repository_info(...)`
-  - To: `$this->github_client->get_repository(...)`
-
-**Verification**:
-- ✅ All 38 PHPUnit tests pass
-- ✅ Plugin builds successfully
-- ✅ WordPress containers restarted with fix deployed
-- ✅ No more fatal errors during update checks
-
-### False Positive Update Detection Fix (Nov 2025)
-
-**Issue**: The plugin was incorrectly showing update notifications for repositories with stable semantic versions (e.g., "0.1.0") but no GitHub releases, forcing unnecessary "updates" to development versions ("dev-main").
-
-**Root Cause**: The branch-based update logic in `RepositoryManager.php` was treating any non-development version as outdated and requiring an update to the branch version.
-
-**Fix Applied**: 
-- **File Modified**: `plugin/src/Repository/RepositoryManager.php` (lines 289-302)
-- **Logic Change**: For repositories without releases, if the current version is a stable semantic version (not starting with 'dev-'), return `null` (no update needed) instead of forcing an update
-- **Validation**: Comprehensive testing confirmed the fix prevents false positives while maintaining legitimate update detection
-
-**Technical Details**:
-```php
-// Before: Forced updates from stable to dev versions
-if ( ! empty( $current_version ) && strpos( $current_version, 'dev-' ) !== 0 ) {
-    // Always returned update info - FALSE POSITIVE
-}
-
-// After: Smart detection prevents false positives
-if ( ! empty( $current_version ) && strpos( $current_version, 'dev-' ) !== 0 ) {
-    // Log and return null - NO FALSE UPDATE
-    $this->logger->info( "Repository has stable version but no releases. Not showing update." );
-    return null;
+// Cache clearing and transient deletion
+$this->github_client->clear_cache($repository->get_owner(), $repository->get_repo());
+if ($repository->is_plugin()) {
+    delete_site_transient('update_plugins');
+} else {
+    delete_site_transient('update_themes');
 }
 ```
 
-**Impact**: Eliminates false positive "Update" notifications for themes/plugins with stable versions in repositories that don't use GitHub releases.
+### Bootstrap 5.3 UI Enhancement
 
-**Testing**: All 38 existing tests continue to pass, ensuring no regression in legitimate update detection.
+**Goal**: Replace custom CSS with professional Bootstrap framework for better user experience and maintainability.
+
+**Implementation**:
+1. **Bootstrap Integration**:
+   - Downloaded Bootstrap 5.3.3 CSS for local hosting (WordPress.org compliance)
+   - Updated CSS enqueue system to load Bootstrap before custom styles
+   - Created custom CSS to complement Bootstrap with brand theming
+
+2. **Component Overhaul**:
+   - **Repository Table**: Converted to Bootstrap responsive table with hover effects
+   - **Forms**: Implemented Bootstrap form controls with proper validation styling
+   - **Cards**: Professional card layouts with headers and footers
+   - **Buttons**: Button groups with proper sizing and responsive behavior
+   - **Alerts**: Bootstrap alert components for better user notifications
+
+3. **Responsive Design**:
+   - Mobile-first approach with Bootstrap's grid system
+   - Responsive table that adapts to small screens
+   - Button groups that stack on mobile devices
+   - Optimized spacing and typography for all screen sizes
+
+**UI Improvements**:
+- Professional visual hierarchy with consistent spacing
+- Better color scheme with semantic colors for status indicators
+- Improved accessibility with proper ARIA labels and focus states
+- Enhanced user feedback with loading states and confirmation dialogs
+
+### Previous Bug Fixes (v1.3.x)
+
+#### WordPress.org Directory Compliance
+- Fixed 4,979 WordPress Coding Standard violations
+- Implemented snake_case method naming for interfaces
+- Added required WordPress.org files (readme.txt, uninstall.php)
+- Enhanced security with proper input sanitization
+
+#### Fatal Error Fix - Method Name Consistency
+- Fixed `get_repository_info()` to `get_repository()` method calls
+- Resolved fatal errors during update checks
+- Maintained all 38 PHPUnit tests passing
+
+#### False Positive Update Detection Fix
+- Prevented unnecessary updates from stable versions to development versions
+- Smart detection logic for repositories without GitHub releases
+- Eliminated false "Update" notifications for stable installations
 
 ## Common Issues & Troubleshooting
 
