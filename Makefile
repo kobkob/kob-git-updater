@@ -182,6 +182,15 @@ docker-shell: ## Access WordPress container shell
 docker-mysql: ## Access MySQL container shell
 	cd $(PLUGIN_DIR) && docker-compose exec db mysql -u wordpress -p
 
+docker-fix: ## Fix Docker Desktop permissions in WSL
+	@echo "$(BLUE)Fixing Docker Desktop WSL permissions...$(NC)"
+	@if [ -x "scripts/fix-docker-wsl.sh" ]; then \
+		scripts/fix-docker-wsl.sh; \
+	else \
+		echo "$(YELLOW)Docker fix script not found, using manual fix...$(NC)"; \
+		sudo chmod 666 /mnt/wsl/docker-desktop/shared-sockets/guest-services/docker.proxy.sock 2>/dev/null || echo "$(RED)Manual fix failed - check Docker Desktop is running$(NC)"; \
+	fi
+
 ##@ Permission Management
 
 fix-permissions: ## Fix file ownership and permissions for development

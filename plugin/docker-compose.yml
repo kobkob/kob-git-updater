@@ -15,9 +15,11 @@ services:
       - "3307:3306"
     command: '--default-authentication-plugin=mysql_native_password'
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "wordpress", "-pwordpress"]
-      timeout: 20s
-      retries: 10
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # WordPress with Plugin Development Environment
   wordpress:
@@ -49,7 +51,7 @@ services:
       - ./src:/var/www/html/wp-content/plugins/kob-git-updater/src
       - ./vendor:/var/www/html/wp-content/plugins/kob-git-updater/vendor
       - ./assets:/var/www/html/wp-content/plugins/kob-git-updater/assets
-      - ./kob-git-updater-new.php:/var/www/html/wp-content/plugins/kob-git-updater/kob-git-updater.php
+      - ./kob-git-updater.php:/var/www/html/wp-content/plugins/kob-git-updater/kob-git-updater.php
       - ./composer.json:/var/www/html/wp-content/plugins/kob-git-updater/composer.json
       # Logs
       - ./docker/logs/wordpress:/var/log
